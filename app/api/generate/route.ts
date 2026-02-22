@@ -322,6 +322,7 @@ POSITIONING:
 
 IMPORTANT: The variable MUST be called \`result\`. This is non-negotiable.
 Always generate complete, runnable Build123d code. Never use placeholders.
+IMPORTANT: When using fillet() or chamfer(), always use try/except to catch failures and fall back to the unfilleted shape. Fillet radii that are too large for small edges will crash. Example: try:\n  result = fillet(box.edges(), 2)\nexcept ValueError:\n  result = box
 Output ONLY valid Python code with no markdown and no backticks.
 Brief comments are OK. You have full freedom to use loops, math, helper functions, and trigonometry to create complex geometry like gear teeth, patterns, organic shapes, and involute profiles. Do not simplify — generate the most accurate geometry possible.
 

@@ -164,10 +164,107 @@ print(f"Exported STL to {_stl_path}")
   } catch (err: any) {
     console.error('[compile] Build123d execution failed:')
     console.error('[compile] stderr:', err.stderr)
-    console.error('[compile] stdout:', err.stdout)
     console.error('[compile] message:', err.message)
 
     const errorMsg = err.stderr || err.message || 'Compilation failed'
+
+    // Auto-heal: if fillet/chamfer failed, retry without them
+    if (errorMsg.includes('fillet') || errorMsg.includes('chamfer') || errorMsg.includes('Failed creating a fillet') || errorMsg.includes('BRep_API: command not done')) {
+      console.log('[compile] Fillet/chamfer error detected — retrying without fillets...')
+
+      try {
+        // Remove fillet and chamfer lines from the code
+        const healedCode = code
+          .split('\n')
+          .filter(line => {
+            const trimmed = line.trim().toLowerCase()
+            return !trimmed.includes('fillet(') && !trimmed.includes('chamfer(') && !trimmed.includes('= fillet(') && !trimmed.includes('= chamfer(')
+          })
+          .join('\n')
+
+        const healedWrapped = `
+import sys
+import os
+
+# User-generated Build123d code (auto-healed: fillets/chamfers removed)
+${healedCode}
+
+# ── Auto-export to STL ──────────────────────────────────
+from build123d import export_stl, Compound, Part, Solid, Shape
+
+_stl_path = "${stlPath.replace(/\\/g, '/')}"
+
+_shape = None
+for _name in ['result', 'part', 'model', 'final', 'output', 'design']:
+    if _name in dir() and _name in locals():
+        _obj = locals()[_name]
+        if hasattr(_obj, 'part'):
+            _shape = _obj.part
+            break
+        elif isinstance(_obj, (Solid, Compound, Shape)):
+            _shape = _obj
+            break
+
+if _shape is None:
+    for _name, _obj in list(locals().items()):
+        if _name.startswith('_'):
+            continue
+        if hasattr(_obj, 'part') and _obj.part is not None:
+            _shape = _obj.part
+            break
+        if isinstance(_obj, (Solid, Compound)):
+            _shape = _obj
+            break
+
+if _shape is None:
+    print("ERROR: No shape found to export.", file=sys.stderr)
+    sys.exit(1)
+
+export_stl(_shape, _stl_path)
+print(f"Exported STL to {_stl_path} (auto-healed)")
+`
+
+        const healedPyPath = join(tmpdir(), 'paragraph-healed-' + id + '.py')
+        await writeFile(healedPyPath, healedWrapped, 'utf-8')
+
+        const { stdout: hStdout, stderr: hStderr } = await execFileAsync(
+          python,
+          [healedPyPath],
+          {
+            timeout: 60_000,
+            maxBuffer: 10 * 1024 * 1024,
+            env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' },
+          }
+        )
+
+        if (hStdout) console.log('[compile] healed stdout:', hStdout.trim())
+        if (hStderr) console.log('[compile] healed stderr:', hStderr.trim())
+
+        try {
+          await stat(stlPath)
+        } catch {
+          await unlink(healedPyPath).catch(() => {})
+          return NextResponse.json({ error: 'Auto-heal also failed: ' + (hStderr || 'no STL produced') }, { status: 422 })
+        }
+
+        const stlBuffer = await readFile(stlPath)
+        console.log('[compile] Auto-healed successfully! Returning ' + stlBuffer.byteLength + ' bytes (fillets removed)')
+
+        await unlink(healedPyPath).catch(() => {})
+
+        return new Response(stlBuffer, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'Content-Length': String(stlBuffer.byteLength),
+          },
+        })
+      } catch (healErr: any) {
+        console.error('[compile] Auto-heal retry also failed:', healErr.message)
+        return NextResponse.json({ error: errorMsg }, { status: 422 })
+      }
+    }
+
     return NextResponse.json({ error: errorMsg }, { status: 422 })
   } finally {
     await unlink(pyPath).catch(() => {})
