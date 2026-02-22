@@ -369,10 +369,10 @@ export default function AgentMonitor() {
 
           {/* Bars */}
           <div className="space-y-1.5">
-            <ScoreBar label="Proportion" value={scores.proportion ?? 0} color="bg-blue-500" info="How well dimensions match the design intent — edit PARAM nodes to adjust" />
-            <ScoreBar label="Symmetry" value={scores.symmetry ?? 0} color="bg-green-500" info="Whether symmetry goals are achieved — related to GEOMETRY nodes" />
-            <ScoreBar label="Features" value={scores.featureCount ?? 0} color="bg-orange-500" info="How many requested features are present — add via OPERATION nodes" />
-            <ScoreBar label="Params" value={scores.parameterRange ?? 0} color="bg-purple-500" info="Whether parameters are within valid ranges — check TRANSFORM nodes" />
+            <ScoreBar label="Proportion" value={scores.proportion ?? 0} color="bg-blue-500" info="Dimension ratios — edit blue PARAM nodes to adjust" />
+            <ScoreBar label="Symmetry" value={scores.symmetry ?? 0} color="bg-green-500" info="Symmetry score — related to green GEOMETRY nodes" />
+            <ScoreBar label="Features" value={scores.featureCount ?? 0} color="bg-orange-500" info="Feature completeness — controlled by orange OPERATION nodes" />
+            <ScoreBar label="Params" value={scores.parameterRange ?? 0} color="bg-purple-500" info="Parameter validity — check purple TRANSFORM nodes" />
           </div>
 
           {/* Summary stats */}

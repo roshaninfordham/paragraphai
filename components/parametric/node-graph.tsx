@@ -514,40 +514,81 @@ export default function NodeGraph() {
                 setIsEditLoading(true)
                 try {
                   const store = useStore.getState()
+                  const currentValue = param.value
 
-                  const response = await fetch('/api/edit-node', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      instruction: instruction,
-                      node: { id: paramKey, type: 'parameter', label: param.key, op: 'parameter', params: { value: param.value, unit: param.unit, min: param.min, max: param.max } },
-                      fullTree: designTree,
-                    }),
-                  })
+                  // Try to parse the instruction locally first (fast, no API call)
+                  let newValue: number | null = null
+                  const lower = instruction.toLowerCase().trim()
 
-                  if (!response.ok) {
-                    console.error('[node-graph] Param edit failed')
+                  if (lower.includes('double')) newValue = currentValue * 2
+                  else if (lower.includes('triple')) newValue = currentValue * 3
+                  else if (lower.includes('halve') || lower.includes('half')) newValue = currentValue / 2
+
+                  const setMatch = lower.match(/(?:set|change|make)\s*(?:it|to|=)?\s*(\d+\.?\d*)/)
+                  if (setMatch) newValue = parseFloat(setMatch[1])
+
+                  const incMatch = lower.match(/(?:increase|add|plus|\+)\s*(?:by)?\s*(\d+\.?\d*)/)
+                  if (incMatch) newValue = currentValue + parseFloat(incMatch[1])
+
+                  const decMatch = lower.match(/(?:decrease|subtract|reduce|minus|\-)\s*(?:by)?\s*(\d+\.?\d*)/)
+                  if (decMatch) newValue = currentValue - parseFloat(decMatch[1])
+
+                  const mulMatch = lower.match(/(?:multiply|times|x)\s*(?:by)?\s*(\d+\.?\d*)/)
+                  if (mulMatch) newValue = currentValue * parseFloat(mulMatch[1])
+
+                  if (newValue === null && /^\d+\.?\d*$/.test(lower)) newValue = parseFloat(lower)
+
+                  // If local parsing failed, try the API
+                  if (newValue === null) {
+                    try {
+                      const response = await fetch('/api/edit-node', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          instruction: instruction,
+                          node: { id: paramKey, type: 'geometry', label: param.key, op: 'cube', params: { [param.key]: param.value } },
+                          fullTree: designTree,
+                        }),
+                      })
+                      if (response.ok) {
+                        const { params: updatedParams } = await response.json()
+                        const val = updatedParams[param.key] ?? updatedParams.value
+                        if (val !== undefined && typeof val === 'number') newValue = val
+                      } else {
+                        const errBody = await response.json().catch(() => ({}))
+                        console.error('[node-graph] API edit-node error:', response.status, errBody)
+                      }
+                    } catch (apiErr) {
+                      console.error('[node-graph] API call failed:', apiErr)
+                    }
+                  }
+
+                  // Last resort: extract any number from instruction
+                  if (newValue === null) {
+                    const anyNum = instruction.match(/(\d+\.?\d*)/)
+                    if (anyNum) newValue = parseFloat(anyNum[1])
+                  }
+
+                  if (newValue === null) {
+                    store.appendAgentLog({ agent: 'System', message: 'Could not parse edit instruction: ' + instruction, timestamp: Date.now() })
                     setIsEditLoading(false)
                     return
                   }
 
-                  const { params: updatedParams } = await response.json()
+                  // Clamp to min/max if defined
+                  if (param.min !== undefined && newValue < param.min) newValue = param.min
+                  if (param.max !== undefined && newValue > param.max) newValue = param.max
 
                   const updatedTree = {
                     ...designTree,
                     parameters: {
                       ...designTree.parameters,
-                      [paramKey]: {
-                        ...param,
-                        value: updatedParams.value !== undefined ? updatedParams.value : param.value,
-                        ...(updatedParams.min !== undefined ? { min: updatedParams.min } : {}),
-                        ...(updatedParams.max !== undefined ? { max: updatedParams.max } : {}),
-                      },
+                      [paramKey]: { ...param, value: newValue },
                     },
                   }
 
                   setDesignTree(updatedTree)
-                  store.appendAgentLog({ agent: 'System', message: 'Parameter edited: ' + paramKey + ' — ' + instruction, timestamp: Date.now() })
+                  store.appendAgentLog({ agent: 'System', message: paramKey + ': ' + currentValue + ' → ' + newValue + ' (' + instruction + ')', timestamp: Date.now() })
                   store.setPhase('generating-code')
 
                   const codeRes = await fetch('/api/generate-code', {
@@ -571,22 +612,27 @@ export default function NodeGraph() {
                     if (compileRes.ok) {
                       const stlBuffer = await compileRes.arrayBuffer()
                       store.setStlBuffer(stlBuffer)
-                      store.appendAgentLog({ agent: 'System', message: 'Recompiled successfully (' + (stlBuffer.byteLength / 1024).toFixed(1) + ' KB)', timestamp: Date.now() })
+                      store.appendAgentLog({ agent: 'System', message: 'Recompiled (' + (stlBuffer.byteLength / 1024).toFixed(1) + ' KB)', timestamp: Date.now() })
                       store.addToHistory({
                         scadCode: code,
                         stlBuffer: stlBuffer,
                         scores: null,
                         tree: updatedTree,
-                        label: 'Param: ' + instruction.substring(0, 30),
+                        label: paramKey + ': ' + currentValue + ' → ' + newValue,
                       })
                     } else {
-                      store.appendAgentLog({ agent: 'System', message: 'Compile failed after param edit', timestamp: Date.now() })
+                      const errBody = await compileRes.json().catch(() => ({}))
+                      store.appendAgentLog({ agent: 'System', message: 'Compile failed: ' + (errBody.error || 'unknown'), timestamp: Date.now() })
                     }
+                  } else {
+                    store.appendAgentLog({ agent: 'System', message: 'Code generation failed', timestamp: Date.now() })
                   }
+
                   store.setPhase('done')
                   setSelectedNodeId(null)
                 } catch (error) {
                   console.error('[node-graph] Param edit error:', error)
+                  useStore.getState().appendAgentLog({ agent: 'System', message: 'Edit failed: ' + (error instanceof Error ? error.message : 'unknown'), timestamp: Date.now() })
                   useStore.getState().setPhase('done')
                 } finally {
                   setIsEditLoading(false)
