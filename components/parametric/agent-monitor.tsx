@@ -333,7 +333,7 @@ export default function AgentMonitor() {
 
           {/* ── Scoring Engine ── */}
           <AgentCard
-            name="Scoring Engine" role="Deterministic Critic — evaluates geometry against spec"
+            name="Eval Agent" role="Deterministic Critic — evaluates geometry against spec"
             model="Pure Math — No LLM" icon="SE"
             colorBg="bg-amber-950" colorBorder="border-amber-500/50"
             colorDot="bg-amber-400" colorGlow="amber"
