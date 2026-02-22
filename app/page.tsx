@@ -3,7 +3,6 @@
 import dynamic from 'next/dynamic'
 import { useStore } from '@/lib/store'
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
-import { Badge } from '@/components/ui/badge'
 import PromptPanel from '@/components/parametric/prompt-panel'
 import { Boxes } from 'lucide-react'
 
@@ -35,14 +34,6 @@ const PHASE_LABELS: Record<string, string> = {
   error: 'Error',
 }
 
-type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline'
-
-function getPhaseBadgeVariant(phase: string): BadgeVariant {
-  if (phase === 'error') return 'destructive'
-  if (phase === 'done' || phase === 'idle') return 'outline'
-  return 'secondary'
-}
-
 export default function Home() {
   const { phase, iteration } = useStore()
 
@@ -60,12 +51,19 @@ export default function Home() {
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <Badge
-            variant={getPhaseBadgeVariant(phase)}
-            className={isActive ? 'animate-pulse' : ''}
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all duration-500 ${
+              phase === 'done'
+                ? 'bg-white/10 text-white ring-1 ring-white/20 shadow-[0_0_8px_rgba(255,255,255,0.15)]'
+                : phase === 'error'
+                ? 'bg-red-500/10 text-red-400 ring-1 ring-red-500/20'
+                : isActive
+                ? 'bg-white/5 text-white/70 animate-pulse'
+                : 'bg-white/5 text-white/40'
+            }`}
           >
             {PHASE_LABELS[phase] ?? phase}
-          </Badge>
+          </span>
           {iteration > 0 && (
             <span className="text-muted-foreground text-xs">
               Iteration {iteration}

@@ -16,17 +16,7 @@ const DEMO_PROMPTS = [
   { label: 'Flanged Bearing', prompt: 'Flanged bearing housing, 50mm outer flange diameter, 20mm bore, 25mm tall cylindrical body, 4 bolt holes on flange 4mm diameter on 40mm bolt circle, 3mm flange thickness' },
 ]
 
-// ─── Pipeline phases display ──────────────────────────────────────
-const PIPELINE_PHASES = [
-  { key: 'parsing',          label: 'Parse' },
-  { key: 'building-tree',    label: 'Build Tree' },
-  { key: 'generating-code',  label: 'Generate' },
-  { key: 'compiling',        label: 'Compile' },
-  { key: 'scoring',          label: 'Score' },
-  { key: 'done',             label: 'Done' },
-]
 
-const PHASE_ORDER = PIPELINE_PHASES.map((p) => p.key)
 
 export default function PromptPanel() {
   const store = useStore()
@@ -320,7 +310,6 @@ export default function PromptPanel() {
   }
 
   const isLoading = !['idle', 'done', 'error'].includes(store.phase)
-  const currentPhaseIndex = PHASE_ORDER.indexOf(store.phase)
 
   return (
     <div className="flex flex-col gap-3 p-4 border-t border-border bg-card">
@@ -338,35 +327,7 @@ export default function PromptPanel() {
         ))}
       </div>
 
-      {/* ── Pipeline indicator ── */}
-      {store.phase !== 'idle' && (
-        <div className="flex items-center gap-1 overflow-x-auto pb-1">
-          {PIPELINE_PHASES.map((p, i) => {
-            const isPast = currentPhaseIndex > i
-            const isCurrent = currentPhaseIndex === i
-            return (
-              <div key={p.key} className="flex items-center gap-1 shrink-0">
-                <span
-                  className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
-                    isCurrent
-                      ? 'bg-primary text-primary-foreground animate-pulse'
-                      : isPast
-                      ? 'bg-green-900/50 text-green-400'
-                      : 'bg-muted text-muted-foreground/50'
-                  }`}
-                >
-                  {p.label}
-                </span>
-                {i < PIPELINE_PHASES.length - 1 && (
-                  <ChevronRight className="w-3 h-3 text-muted-foreground/30 shrink-0" />
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* ── Image preview ── */}
+      {/* ── Image preview ── */
       {imagePreview && (
         <div className="relative flex items-start gap-2 p-2 rounded-lg bg-muted/50 border border-border w-full">
           <img src={imagePreview} alt="Input" className="h-16 w-16 object-cover rounded" />
