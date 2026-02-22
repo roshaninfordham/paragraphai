@@ -5,7 +5,7 @@ import type { DesignTree, ScoreResult } from '@/lib/types'
 import { useStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Send, Loader2, ChevronRight, Upload, X } from 'lucide-react'
+import { Send, Loader2, ChevronRight, X } from 'lucide-react'
 
 // ─── Demo prompts ─────────────────────────────────────────────────
 const DEMO_PROMPTS = [
@@ -314,8 +314,8 @@ export default function PromptPanel() {
   return (
     <div className="flex flex-col gap-3 p-4 border-t border-border bg-card">
 
-      {/* ── Template chips ── */}
-      <div className="flex flex-wrap gap-1.5">
+      {/* ── Template chips + upload ── */}
+      <div className="flex flex-wrap items-center gap-1.5">
         {DEMO_PROMPTS.map((dp) => (
           <button
             key={dp.label}
@@ -325,6 +325,20 @@ export default function PromptPanel() {
             {dp.label}
           </button>
         ))}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { if (e.target.files?.[0]) processImage(e.target.files[0]) }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          title="Upload image"
+          className="w-7 h-7 rounded-md flex items-center justify-center bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground border border-border transition-colors"
+        >
+          <span className="text-sm leading-none">+</span>
+        </button>
       </div>
 
       {/* ── Image preview ── */}
@@ -353,7 +367,7 @@ export default function PromptPanel() {
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
-        <div className="flex-1 relative">
+        <div className="flex-1">
           <Textarea
             value={localPrompt}
             onChange={(e) => setLocalPrompt(e.target.value)}
@@ -361,23 +375,9 @@ export default function PromptPanel() {
             onPaste={handlePaste}
             placeholder="Describe a 3D object, or drop/paste an image... (⌘+Enter to generate)"
             rows={2}
-            className="w-full resize-y bg-background text-sm pr-10 max-h-32 overflow-y-auto"
+            className="w-full resize-y bg-background text-sm max-h-32 overflow-y-auto"
             disabled={isLoading}
           />
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => { if (e.target.files?.[0]) processImage(e.target.files[0]) }}
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute right-2 top-2 p-1.5 rounded-md hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-            title="Upload image"
-          >
-            <Upload className="w-4 h-4" />
-          </button>
         </div>
         <Button
           onClick={handleGenerate}
