@@ -242,7 +242,7 @@ The JSON must match this exact structure:
 }
 
 Rules:
-- 3 to 12 nodes maximum
+- 5 to 12 nodes minimum-to-maximum. NEVER produce fewer than 5 nodes. Simple prompts should still have at least 5 nodes (e.g. base shape + at least one feature + boolean operation + positioning + final union). Complex prompts should use 8-12 nodes.
 - op must be one of: cube, sphere, cylinder, cone, torus, union, difference, intersection, translate, rotate, scale, fillet, chamfer, linear_extrude, rotate_extrude, pattern_linear, pattern_polar
 - depends_on lists parameter keys the node uses
 - children lists node IDs that are direct children
@@ -316,12 +316,19 @@ RULES:
 6. DO NOT include any viewer/show calls
 7. DO NOT include if __name__ == "__main__" blocks
 
-AVAILABLE BUILD123D PRIMITIVES:
-- Box(length, width, height) — rectangular box centered at origin
-- Cylinder(radius, height) — cylinder centered at origin
-- Sphere(radius) — sphere at origin
-- Cone(bottom_radius, top_radius, height) — cone/frustum
-- Torus(major_radius, minor_radius) — torus
+AVAILABLE BUILD123D PRIMITIVES (positional args ONLY — NEVER use keyword arguments):
+- Box(length, width, height) — e.g. Box(80, 60, 10) NOT Box(l=80, w=60, h=10)
+- Cylinder(radius, height) — e.g. Cylinder(30, 10) NOT Cylinder(r=30, h=10)
+- Sphere(radius) — e.g. Sphere(25)
+- Cone(bottom_radius, top_radius, height) — e.g. Cone(20, 10, 30)
+- Torus(major_radius, minor_radius) — e.g. Torus(30, 5)
+
+CRITICAL SYNTAX RULES:
+- NEVER use keyword arguments for primitives: Cylinder(r=5, h=10) will CRASH. Use Cylinder(5, 10)
+- NEVER use .scale() method. Multiply dimensions directly in the constructor instead.
+- NEVER use Pos(X=x, Y=y, Z=z). Use Pos(x, y, z) with positional args only.
+- NEVER use Rot(X=x, Y=y, Z=z). Use Rot(x, y, z) with positional args only.
+- align parameter IS allowed as keyword: Box(10, 10, 5, align=(Align.CENTER, Align.CENTER, Align.MIN))
 
 OPERATIONS:
 - Fillet: fillet(edges, radius) — e.g. result = fillet(box.edges(), 2)
