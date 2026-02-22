@@ -246,16 +246,6 @@ export default function PromptPanel() {
               case 'scores':
                 latestScores = event.data
                 store.setScores(event.data)
-                if (latestTree) {
-                  store.appendHistory({
-                    iteration: 0,
-                    scores: event.data,
-                    scadCode: latestCode,
-                    editScript: null,
-                    justification: [],
-                    tree: latestTree,
-                  })
-                }
                 break
               case 'agent_done':
                 store.appendAgentLog({

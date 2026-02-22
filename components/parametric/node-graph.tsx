@@ -305,8 +305,8 @@ function PropertiesPanel({ node, nodeType, onClose, onEditSubmit, isLoading }: P
         ))}
       </div>
 
-      {/* NL Edit — only for non-parameter nodes */}
-      {nodeType !== 'parameter' && (
+      {/* NL Edit — for all node types */}
+      {(
         <div className="px-3 pb-3 pt-1.5">
           <div className="mx-0 h-px bg-white/5 mb-2" />
           <div className="flex items-center gap-1">
@@ -504,7 +504,97 @@ export default function NodeGraph() {
           const paramKey = selectedNodeId.replace('param_', '')
           const param = Object.values(designTree.parameters).find(p => p.key === paramKey)
           if (!param) return null
-          return <PropertiesPanel node={param} nodeType="parameter" onClose={() => setSelectedNodeId(null)} onEditSubmit={() => {}} isLoading={false} />
+          return (
+            <PropertiesPanel
+              node={param}
+              nodeType="parameter"
+              onClose={() => setSelectedNodeId(null)}
+              onEditSubmit={async (instruction) => {
+                if (!designTree || !instruction.trim()) return
+                setIsEditLoading(true)
+                try {
+                  const store = useStore.getState()
+
+                  const response = await fetch('/api/edit-node', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      instruction: instruction,
+                      node: { id: paramKey, type: 'parameter', label: param.key, op: 'parameter', params: { value: param.value, unit: param.unit, min: param.min, max: param.max } },
+                      fullTree: designTree,
+                    }),
+                  })
+
+                  if (!response.ok) {
+                    console.error('[node-graph] Param edit failed')
+                    setIsEditLoading(false)
+                    return
+                  }
+
+                  const { params: updatedParams } = await response.json()
+
+                  const updatedTree = {
+                    ...designTree,
+                    parameters: {
+                      ...designTree.parameters,
+                      [paramKey]: {
+                        ...param,
+                        value: updatedParams.value !== undefined ? updatedParams.value : param.value,
+                        ...(updatedParams.min !== undefined ? { min: updatedParams.min } : {}),
+                        ...(updatedParams.max !== undefined ? { max: updatedParams.max } : {}),
+                      },
+                    },
+                  }
+
+                  setDesignTree(updatedTree)
+                  store.appendAgentLog({ agent: 'System', message: 'Parameter edited: ' + paramKey + ' — ' + instruction, timestamp: Date.now() })
+                  store.setPhase('generating-code')
+
+                  const codeRes = await fetch('/api/generate-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tree: updatedTree }),
+                  })
+
+                  if (codeRes.ok) {
+                    const { code } = await codeRes.json()
+                    store.setScadCode(code)
+                    store.appendAgentLog({ agent: 'System', message: 'Regenerated ' + code.split('\n').length + ' lines', timestamp: Date.now() })
+                    store.setPhase('compiling')
+
+                    const compileRes = await fetch('/api/compile', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ code }),
+                    })
+
+                    if (compileRes.ok) {
+                      const stlBuffer = await compileRes.arrayBuffer()
+                      store.setStlBuffer(stlBuffer)
+                      store.appendAgentLog({ agent: 'System', message: 'Recompiled successfully (' + (stlBuffer.byteLength / 1024).toFixed(1) + ' KB)', timestamp: Date.now() })
+                      store.addToHistory({
+                        scadCode: code,
+                        stlBuffer: stlBuffer,
+                        scores: null,
+                        tree: updatedTree,
+                        label: 'Param: ' + instruction.substring(0, 30),
+                      })
+                    } else {
+                      store.appendAgentLog({ agent: 'System', message: 'Compile failed after param edit', timestamp: Date.now() })
+                    }
+                  }
+                  store.setPhase('done')
+                  setSelectedNodeId(null)
+                } catch (error) {
+                  console.error('[node-graph] Param edit error:', error)
+                  useStore.getState().setPhase('done')
+                } finally {
+                  setIsEditLoading(false)
+                }
+              }}
+              isLoading={isEditLoading}
+            />
+          )
         }
         
         const designNode = designTree.nodes[selectedNodeId]

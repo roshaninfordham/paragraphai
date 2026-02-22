@@ -260,7 +260,7 @@ export default function AgentMonitor() {
 
           {/* ── Nemotron (NVIDIA) ── */}
           <AgentCard
-            name="Nemotron Agent" role="Intent Parser — extracts design parameters from natural language"
+            name="Nemotron" role="Intent Parser — extracts design parameters from natural language"
             model="nvidia-nemotron-nano-9b-v2" icon="N"
             colorBg="bg-emerald-950" colorBorder="border-emerald-500/50"
             colorDot="bg-emerald-400" colorGlow="emerald"
@@ -292,7 +292,7 @@ export default function AgentMonitor() {
 
           {/* ── Claude Logic ── */}
           <AgentCard
-            name="Tree Logic Agent" role="Tree Builder — constructs parametric dependency graph"
+            name="Tree Logic" role="Tree Builder — constructs parametric dependency graph"
             model="claude-sonnet-4-5" icon="CL"
             colorBg="bg-purple-950" colorBorder="border-purple-500/50"
             colorDot="bg-purple-400" colorGlow="purple"
@@ -312,7 +312,7 @@ export default function AgentMonitor() {
 
           {/* ── Claude Code ── */}
           <AgentCard
-            name="Script Agent" role="Code Generator — produces Build123d Python from tree"
+            name="Script" role="Code Generator — produces Build123d Python from tree"
             model="claude-sonnet-4-5" icon="CC"
             colorBg="bg-blue-950" colorBorder="border-blue-500/50"
             colorDot="bg-blue-400" colorGlow="blue"
@@ -333,7 +333,7 @@ export default function AgentMonitor() {
 
           {/* ── Scoring Engine ── */}
           <AgentCard
-            name="Eval Agent" role="Deterministic Critic — evaluates geometry against spec"
+            name="Evaluation" role="Deterministic Critic — evaluates geometry against spec"
             model="Pure Math — No LLM" icon="SE"
             colorBg="bg-amber-950" colorBorder="border-amber-500/50"
             colorDot="bg-amber-400" colorGlow="amber"
