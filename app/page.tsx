@@ -74,40 +74,48 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ── Main content: Resizable viewport/graph + fixed sidebar ── */}
-      <div className="flex flex-1 overflow-hidden">
+      {/* ── Main content ── */}
+        <PanelGroup direction="horizontal" className="flex-1">
+          <Panel defaultSize={75} minSize={50}>
+            <PanelGroup direction="vertical" className="h-full">
+              <Panel defaultSize={75} minSize={30}>
+                {/* Top: Viewport and Graph side-by-side */}
+                <PanelGroup direction="horizontal" className="h-full">
+                  <Panel defaultSize={50} minSize={20}>
+                    <div className="w-full h-full">
+                      <Viewport3D />
+                    </div>
+                  </Panel>
 
-        {/* Left: Viewport and Node Graph (horizontally resizable) */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Top: Viewport and Graph side-by-side */}
-          <PanelGroup direction="horizontal" className="flex-1">
-            <Panel defaultSize={50} minSize={25}>
-              <div className="w-full h-full">
-                <Viewport3D />
-              </div>
-            </Panel>
+                  <PanelResizeHandle className="w-1.5 bg-border hover:bg-blue-500 transition-colors cursor-col-resize" />
 
-            <PanelResizeHandle className="w-1.5 bg-border hover:bg-blue-500 transition-colors cursor-col-resize" />
+                  <Panel defaultSize={50} minSize={20}>
+                    <div className="w-full h-full overflow-hidden">
+                      <NodeGraph />
+                    </div>
+                  </Panel>
+                </PanelGroup>
+              </Panel>
 
-            <Panel defaultSize={50} minSize={25}>
-              <div className="w-full h-full overflow-hidden">
-                <NodeGraph />
-              </div>
-            </Panel>
-          </PanelGroup>
+              <PanelResizeHandle className="h-1.5 bg-border hover:bg-blue-500 transition-colors cursor-row-resize" />
 
-          {/* Bottom: Prompt Panel */}
-          <div className="shrink-0 border-t border-border">
-            <PromptPanel />
-          </div>
-        </div>
+              <Panel defaultSize={25} minSize={10} maxSize={50}>
+                <div className="h-full overflow-y-auto">
+                  <PromptPanel />
+                </div>
+              </Panel>
+            </PanelGroup>
+          </Panel>
 
-        {/* Right: Fixed sidebar with scrollable content */}
-        <div className="w-[340px] shrink-0 border-l border-border overflow-y-auto">
-          <AgentMonitor />
-        </div>
+          <PanelResizeHandle className="w-1.5 bg-border hover:bg-blue-500 transition-colors cursor-col-resize" />
 
-      </div>
+          {/* Right: Agent Monitor sidebar (now resizable) */}
+          <Panel defaultSize={25} minSize={15} maxSize={40}>
+            <div className="h-full overflow-y-auto">
+              <AgentMonitor />
+            </div>
+          </Panel>
+        </PanelGroup>
     </div>
   )
 }
