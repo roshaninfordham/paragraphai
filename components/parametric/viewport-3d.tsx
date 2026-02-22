@@ -214,7 +214,6 @@ export default function Viewport3D() {
   }, [showGrid])
 
   const loading = phase === 'generating-code' || phase === 'compiling' || phase === 'validating'
-  const empty = !stlBuffer && (phase === 'idle' || phase === 'done')
 
   const downloadSTL = () => {
     if (!stlBuffer) return
@@ -299,14 +298,7 @@ export default function Viewport3D() {
         </div>
       )}
 
-      {/* ── Empty state ── */}
-      {empty && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none z-10">
-          <div className="text-4xl opacity-20">◻</div>
-          <p className="text-muted-foreground text-sm">3D geometry will appear here</p>
-          <p className="text-muted-foreground text-[10px]">Describe a 3D object below to generate</p>
-        </div>
-      )}
+
     </div>
   )
 }
