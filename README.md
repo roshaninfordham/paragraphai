@@ -21,7 +21,7 @@
 
 ## What Is ParaGraph?
 
-ParaGraph is a **multi-agent AI system** that converts natural language or images into engineering-grade parametric 3D models. Unlike tools that generate static meshes, ParaGraph generates **editable parametric dependency graphs** — every dimension is a named, adjustable parameter, every change is logged, scored, and reversible.
+**Cursor for CAD** — describe a design in words or images, and get an editable parametric model that improves itself.
 
 ---
 
