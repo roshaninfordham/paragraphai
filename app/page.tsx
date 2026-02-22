@@ -58,9 +58,6 @@ export default function Home() {
           <span className="font-semibold text-sm tracking-tight">
             ParaGraph
           </span>
-          <span className="text-muted-foreground text-xs hidden sm:block">
-            AI Parametric Design Studio
-          </span>
         </div>
         <div className="flex items-center gap-3">
           <Badge
