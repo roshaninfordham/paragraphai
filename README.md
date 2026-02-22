@@ -18,7 +18,7 @@
 
 ## What Is ParaGraph?
 
-**Cursor for CAD** — describe a design in words or images, and get an editable parametric model that improves itself.
+**AI parametric design studio** — describe a real-world 3D object in words or images, and get an editable parametric model that improves itself.
 
 ---
 
@@ -63,7 +63,7 @@ flowchart TD
     style G fill:#1D4ED8,color:#fff
 ```
 
-### Image-to-Design Pipeline (DIR)
+### Image-to-Design Pipeline
 
 ```mermaid
 flowchart LR
@@ -241,35 +241,6 @@ pnpm dev
 
 ---
 
-## Demo
-
-### Preset Prompts (one click in the UI)
-
-| Prompt | What it demonstrates |
-|:---|:---|
-| `spur gear with 24 teeth, module 2, 5mm bore` | Involute geometry, math, polar arrays |
-| `L-bracket 80×60×3mm with 4 mounting holes` | Boolean ops, GridLocations, chamfers |
-| `parametric phone stand with 15° viewing angle` | Angle-driven geometry, trig |
-| `hex bolt M8×30 with chamfered head` | Thread profile, chamfers, rotational sweep |
-
-### Pipeline Steps (visible live in the UI)
-
-```
-1. Intent Parsing   Agent 1 · Nemotron    extracts type, dimensions, features
-2. Tree Building    Agent 2 · Claude      builds parametric dependency graph
-3. Code Generation  Agent 3 · Claude      writes Build123d Python
-4. Compilation      Build123d + Python    executes server-side → STL
-5. Scoring          Agent 4 · Deterministic  proportion/symmetry/features/params
-```
-
-### Image Upload Flow
-1. Click the image icon or paste a photo into the prompt box
-2. DIR pipeline classifies geometry family + features via VLM
-3. Deterministic prompt assembled from DIR JSON (no hallucination)
-4. Full 4-agent pipeline runs on extracted intent
-
----
-
 ## Performance & Cost
 
 | Metric | Value |
@@ -288,17 +259,6 @@ pnpm dev
 
 ---
 
-## Documentation
-
-| Doc | Description |
-|:---|:---|
-| [docs/architecture.md](docs/architecture.md) | Agent details, model configs, SSE event flow, DIR schema |
-| [docs/dir-pipeline.md](docs/dir-pipeline.md) | Image-to-design pipeline stages, VLM extraction, prompt templates |
-| [docs/api-reference.md](docs/api-reference.md) | All endpoints, request/response schemas, SSE event table |
-| [CHALLENGES.md](CHALLENGES.md) | 10 technical problems solved during the 48-hour build |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to add agents, primitives, and DIR families |
-
----
 
 ## The Category We're Creating
 
@@ -310,8 +270,8 @@ Not "AI for 3D." Not a mesh generator. A **goal-driven parametric design engine*
 
 ## Built At
 
-**Tech@NYU Startup Week 2026 Buildathon** · NVIDIA AI Automation Track · 48 hours
+**Tech@NYU Startup Week 2026 Buildathon** · NVIDIA · AI Automation Track
 
 ## License
 
-[MIT](LICENSE) © 2026 ParaGraph Team
+[MIT](LICENSE) © 2026 ParaGraph
