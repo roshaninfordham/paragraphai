@@ -65,20 +65,28 @@ export default function PromptPanel() {
         setIsAnalyzing(false)
         return
       }
-      const { description, dir, model } = await res.json()
+      const { description, dir, model, geoAnalysis, pass } = await res.json()
       setLocalPrompt(description)
       setIsAnalyzing(false)
 
       store.appendAgentLog({
         agent: 'System',
-        message: `Vision analysis complete via ${model || 'VLM'}${dir ? ` — family: ${dir.family} (${(dir.confidence * 100).toFixed(0)}% confidence), ${dir.features?.length || 0} features detected` : ''}`,
+        message: `Vision analysis complete via ${model || 'VLM'} (${pass || 'single-pass'})${dir ? ` — family: ${dir.family} (${(dir.confidence * 100).toFixed(0)}% confidence), ${dir.features?.length || 0} features detected` : ''}`,
         timestamp: Date.now(),
       })
+
+      if (geoAnalysis) {
+        store.appendAgentLog({
+          agent: 'System',
+          message: `Pass 1 Geometry: outline=${geoAnalysis.outline}, topology=${geoAnalysis.topology}, is_3d=${geoAnalysis.is_3d_drawing}, features=${geoAnalysis.internal_features?.length || 0}`,
+          timestamp: Date.now(),
+        })
+      }
 
       if (dir) {
         store.appendAgentLog({
           agent: 'System',
-          message: `DIR: ratio=${dir.global?.height_width_ratio?.toFixed(1)}, symmetry=${dir.global?.symmetry?.type}(${dir.global?.symmetry?.score?.toFixed(2)}), detail=${dir.global?.detail_level?.toFixed(1)}`,
+          message: `DIR: ratio=${dir.global?.height_width_ratio?.toFixed(1)}, symmetry=${dir.global?.symmetry?.type}(${dir.global?.symmetry?.score?.toFixed(2)}), detail=${dir.global?.detail_level?.toFixed(1)}${dir.construction_strategy ? ' | strategy: ' + dir.construction_strategy.substring(0, 100) : ''}`,
           timestamp: Date.now(),
         })
       }
