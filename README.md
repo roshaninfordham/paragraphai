@@ -2,6 +2,8 @@
 
 # ParaGraph
 
+### The Future of Parametric Design
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white)](https://typescriptlang.org)
@@ -10,7 +12,23 @@
 [![Anthropic](https://img.shields.io/badge/Anthropic-Claude%20Sonnet-blueviolet)](https://anthropic.com)
 [![Babylon.js](https://img.shields.io/badge/3D-Babylon.js-red)](https://babylonjs.com)
 
+**Describe a 3D object in words or images. Get an editable, self-improving parametric model.**
+
 [Quick Start](#getting-started) · [Architecture](#architecture) · [API Reference](docs/api-reference.md) · [Challenges](CHALLENGES.md) · [Contributing](CONTRIBUTING.md)
+
+---
+
+### Product Demo
+
+<a href="https://youtu.be/F_mKqZDlSyo?si=FL9V3wL2A7wVINph">
+  <img src="https://img.youtube.com/vi/F_mKqZDlSyo/maxresdefault.jpg" alt="ParaGraph Product Demo" width="720" />
+</a>
+
+<p>
+  <a href="https://youtu.be/F_mKqZDlSyo?si=FL9V3wL2A7wVINph">
+    <img src="https://img.shields.io/badge/%E2%96%B6%EF%B8%8F_Watch_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Demo on YouTube" />
+  </a>
+</p>
 
 </div>
 
@@ -18,7 +36,7 @@
 
 ## What Is ParaGraph?
 
-**AI parametric design studio** — describe a real-world 3D object in words or images, and get an editable parametric model that improves itself.
+**AI parametric design studio** — describe a real-world 3D object in words or images, and get an editable parametric model that improves itself. Built on a multi-agent pipeline with BREP geometry, objective scoring, and autonomous iteration.
 
 ---
 
@@ -268,9 +286,22 @@ Not "AI for 3D." Not a mesh generator. A **goal-driven parametric design engine*
 
 ---
 
+## Roadmap
+
+- [ ] Multi-object scene composition
+- [ ] Collaborative editing (multiplayer)
+- [ ] Plugin system for custom primitives
+- [ ] STEP / IGES export for manufacturing
+- [ ] On-device inference (WebGPU + local LLMs)
+- [ ] CI/CD pipeline with geometry regression tests
+
+---
+
 ## Built At
 
 **Tech@NYU Startup Week 2026 Buildathon** · NVIDIA · AI Automation Track
+
+---
 
 ## License
 
