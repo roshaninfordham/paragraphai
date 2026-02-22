@@ -283,7 +283,7 @@ export default function Viewport3D() {
           disabled={!stlBuffer}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-mono transition-all ${
             stlBuffer
-              ? 'bg-blue-600/80 text-white hover:bg-blue-500/90'
+              ? 'bg-green-600/80 text-white hover:bg-green-500/90 shadow-sm'
               : 'bg-black/30 text-gray-600 cursor-not-allowed'
           }`}
           title="Download STL"
@@ -291,7 +291,7 @@ export default function Viewport3D() {
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
             <path d="M5 7L1.5 3.5h2V0h3v3.5h2L5 7zM0 9h10v1H0z"/>
           </svg>
-          Download STL
+          ↓ Download STL
         </button>
       </div>
 

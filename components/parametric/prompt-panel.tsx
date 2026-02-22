@@ -368,7 +368,7 @@ export default function PromptPanel() {
 
       {/* ── Image preview ── */}
       {imagePreview && (
-        <div className="relative inline-flex items-center gap-2 p-2 rounded-lg bg-muted/50 border border-border">
+        <div className="relative flex items-start gap-2 p-2 rounded-lg bg-muted/50 border border-border w-full">
           <img src={imagePreview} alt="Input" className="h-16 w-16 object-cover rounded" />
           <div className="flex-1 min-w-0">
             <p className="text-xs text-muted-foreground">Image ready for analysis</p>
@@ -399,8 +399,8 @@ export default function PromptPanel() {
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             placeholder="Describe a 3D object, or drop/paste an image... (⌘+Enter to generate)"
-            rows={3}
-            className="w-full resize-none bg-background text-sm pr-10"
+            rows={2}
+            className="w-full resize-y bg-background text-sm pr-10 max-h-32 overflow-y-auto"
             disabled={isLoading}
           />
           <input
