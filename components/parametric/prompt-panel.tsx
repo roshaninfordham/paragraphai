@@ -327,7 +327,7 @@ export default function PromptPanel() {
         ))}
       </div>
 
-      {/* ── Image preview ── */
+      {/* ── Image preview ── */}
       {imagePreview && (
         <div className="relative flex items-start gap-2 p-2 rounded-lg bg-muted/50 border border-border w-full">
           <img src={imagePreview} alt="Input" className="h-16 w-16 object-cover rounded" />
