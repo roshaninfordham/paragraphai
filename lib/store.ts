@@ -147,6 +147,7 @@ export const useStore = create<StoreState>()((set) => ({
     const version = s.designHistory.find(h => h.id === id)
     if (!version) return {}
     return {
+      prompt: version.prompt,
       scadCode: version.scadCode,
       stlBuffer: version.stlBuffer,
       scores: version.scores,
@@ -158,7 +159,7 @@ export const useStore = create<StoreState>()((set) => ({
     set((state) => ({
       ...defaultState,
       prompt: state.prompt,
-      designHistory: [],
+      designHistory: state.designHistory,
       agentMetrics: {},
     })),
 }))

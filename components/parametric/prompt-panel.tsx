@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import type { DesignTree, ScoreResult } from '@/lib/types'
 import { useStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
@@ -27,6 +27,13 @@ export default function PromptPanel() {
   const [imageMimeType, setImageMimeType] = useState<string>('image/png')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Sync local prompt when store.prompt changes (e.g. version restore)
+  useEffect(() => {
+    if (store.prompt && store.prompt !== localPrompt) {
+      setLocalPrompt(store.prompt)
+    }
+  }, [store.prompt])
 
   const processImage = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) return
