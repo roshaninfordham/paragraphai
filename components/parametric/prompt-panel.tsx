@@ -154,6 +154,17 @@ export default function PromptPanel() {
 
       const stlBuffer = await res.arrayBuffer()
 
+      // Extract BREP geometry metrics from compile response
+      const metricsHeader = res.headers.get('X-Geometry-Metrics')
+      let geometryMetrics = null
+      if (metricsHeader) {
+        try {
+          geometryMetrics = JSON.parse(metricsHeader)
+          console.log('[prompt-panel] BREP metrics:', geometryMetrics)
+          store.setGeometryMetrics(geometryMetrics)
+        } catch {}
+      }
+
       if (stlBuffer.byteLength < 84) {
         store.appendAgentLog({
           agent: 'System',
@@ -177,6 +188,21 @@ export default function PromptPanel() {
         tree: tree,
         label: `v${(useStore.getState().designHistory?.length || 0) + 1}`,
       })
+      // Re-score with real BREP metrics
+      if (geometryMetrics && tree) {
+        const { scoreDesign } = await import('@/lib/scoring')
+        const updatedScores = scoreDesign(tree, store.prompt, geometryMetrics)
+        store.setScores(updatedScores)
+        store.appendAgentLog({
+          agent: 'Evaluation',
+          message: 'Re-scored with BREP metrics: ' + updatedScores.overall.toFixed(2) +
+            ' (vol=' + (geometryMetrics.volume?.toFixed(1) || '?') +
+            ' faces=' + (geometryMetrics.face_count || '?') +
+            ' valid=' + (geometryMetrics.is_valid ? 'yes' : 'NO') + ')',
+          timestamp: Date.now(),
+        })
+      }
+
       store.setPhase('done')
     } catch (err) {
       store.appendAgentLog({

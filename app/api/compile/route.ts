@@ -119,6 +119,81 @@ if _shape is None:
     sys.exit(1)
 
 export_stl(_shape, _stl_path)
+
+# ── Extract geometric metrics for Evaluation Agent ──────────────
+import json as _json
+
+_metrics = {}
+try:
+  # Bounding box dimensions
+  _bb = _shape.bounding_box()
+  _metrics["bbox_min"] = [round(_bb.min.X, 3), round(_bb.min.Y, 3), round(_bb.min.Z, 3)]
+  _metrics["bbox_max"] = [round(_bb.max.X, 3), round(_bb.max.Y, 3), round(_bb.max.Z, 3)]
+  _dims = [round(_bb.max.X - _bb.min.X, 3), round(_bb.max.Y - _bb.min.Y, 3), round(_bb.max.Z - _bb.min.Z, 3)]
+  _metrics["dimensions"] = _dims
+  _metrics["max_dimension"] = round(max(_dims), 3)
+  _metrics["min_dimension"] = round(min(d for d in _dims if d > 0.001), 3) if any(d > 0.001 for d in _dims) else 0
+
+  # Volume and surface area (from OpenCascade BREP kernel)
+  _metrics["volume"] = round(float(_shape.volume), 4)
+  _metrics["surface_area"] = round(float(_shape.area), 4)
+
+  # Topology counts
+  _faces = _shape.faces()
+  _edges = _shape.edges()
+  _vertices = _shape.vertices()
+  _metrics["face_count"] = len(_faces)
+  _metrics["edge_count"] = len(_edges)
+  _metrics["vertex_count"] = len(_vertices)
+
+  # Face type distribution (PLANE, CYLINDER, CONE, SPHERE, TORUS, BSPLINE, etc.)
+  _face_types = {}
+  for _f in _faces:
+    _ft = str(_f.geom_type())
+    _face_types[_ft] = _face_types.get(_ft, 0) + 1
+  _metrics["face_types"] = _face_types
+
+  # Edge type distribution
+  _edge_types = {}
+  for _e in _edges:
+    _et = str(_e.geom_type())
+    _edge_types[_et] = _edge_types.get(_et, 0) + 1
+  _metrics["edge_types"] = _edge_types
+
+  # Validity check (OpenCascade BRepCheck_Analyzer)
+  _metrics["is_valid"] = bool(_shape.is_valid())
+
+  # Aspect ratios
+  if _metrics["min_dimension"] > 0:
+    _metrics["aspect_ratio"] = round(_metrics["max_dimension"] / _metrics["min_dimension"], 3)
+  else:
+    _metrics["aspect_ratio"] = 0
+
+  # Compactness (sphere has max compactness = 1.0)
+  if _metrics["volume"] > 0 and _metrics["surface_area"] > 0:
+    import math
+    _metrics["compactness"] = round((math.pi ** (1/3) * (6 * _metrics["volume"]) ** (2/3)) / _metrics["surface_area"], 4)
+  else:
+    _metrics["compactness"] = 0
+
+  # Center of mass
+  _com = _shape.center()
+  _metrics["center_of_mass"] = [round(float(_com.X), 3), round(float(_com.Y), 3), round(float(_com.Z), 3)]
+
+  # Symmetry hint: check if center of mass is near bounding box center
+  _bb_center = [round((_bb.min.X + _bb.max.X) / 2, 3), round((_bb.min.Y + _bb.max.Y) / 2, 3), round((_bb.min.Z + _bb.max.Z) / 2, 3)]
+  _com_offset = sum(abs(_metrics["center_of_mass"][i] - _bb_center[i]) for i in range(3))
+  _metrics["symmetry_hint"] = round(max(0, 1.0 - _com_offset / max(_metrics["max_dimension"], 0.001)), 4)
+
+except Exception as _e:
+  _metrics["error"] = str(_e)
+
+# Write metrics as JSON to a sidecar file
+_metrics_path = _stl_path.replace('.stl', '.metrics.json')
+with open(_metrics_path, 'w') as _mf:
+  _mf.write(_json.dumps(_metrics))
+
+print(f"METRICS_JSON:{_json.dumps(_metrics)}")
 print(f"Exported STL to {_stl_path}")
 `
 
@@ -153,15 +228,33 @@ print(f"Exported STL to {_stl_path}")
     const stlBuffer = await readFile(stlPath)
     console.log(`[compile] Returning ${stlBuffer.byteLength} bytes of STL`)
 
+    // Extract BREP metrics from Python stdout
+    let geometryMetrics = null
+    if (stdout) {
+      const metricsMatch = stdout.match(/METRICS_JSON:(.+)/)
+      if (metricsMatch) {
+        try {
+          geometryMetrics = JSON.parse(metricsMatch[1])
+          console.log('[compile] BREP metrics:', JSON.stringify(geometryMetrics).substring(0, 200))
+        } catch {}
+      }
+    }
+
+    // If we have metrics, return them as a header (STL body stays binary)
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': String(stlBuffer.byteLength),
+    }
+    if (geometryMetrics) {
+      headers['X-Geometry-Metrics'] = JSON.stringify(geometryMetrics)
+    }
+
     await unlink(pyPath).catch(() => {})
     await unlink(stlPath).catch(() => {})
 
     return new Response(stlBuffer, {
       status: 200,
-      headers: {
-        'Content-Type': 'application/octet-stream',
-        'Content-Length': String(stlBuffer.byteLength),
-      },
+      headers,
     })
 
   } catch (err: any) {
@@ -224,6 +317,81 @@ if _shape is None:
     sys.exit(1)
 
 export_stl(_shape, _stl_path)
+
+# ── Extract geometric metrics for Evaluation Agent ──────────────
+import json as _json
+
+_metrics = {}
+try:
+  # Bounding box dimensions
+  _bb = _shape.bounding_box()
+  _metrics["bbox_min"] = [round(_bb.min.X, 3), round(_bb.min.Y, 3), round(_bb.min.Z, 3)]
+  _metrics["bbox_max"] = [round(_bb.max.X, 3), round(_bb.max.Y, 3), round(_bb.max.Z, 3)]
+  _dims = [round(_bb.max.X - _bb.min.X, 3), round(_bb.max.Y - _bb.min.Y, 3), round(_bb.max.Z - _bb.min.Z, 3)]
+  _metrics["dimensions"] = _dims
+  _metrics["max_dimension"] = round(max(_dims), 3)
+  _metrics["min_dimension"] = round(min(d for d in _dims if d > 0.001), 3) if any(d > 0.001 for d in _dims) else 0
+
+  # Volume and surface area (from OpenCascade BREP kernel)
+  _metrics["volume"] = round(float(_shape.volume), 4)
+  _metrics["surface_area"] = round(float(_shape.area), 4)
+
+  # Topology counts
+  _faces = _shape.faces()
+  _edges = _shape.edges()
+  _vertices = _shape.vertices()
+  _metrics["face_count"] = len(_faces)
+  _metrics["edge_count"] = len(_edges)
+  _metrics["vertex_count"] = len(_vertices)
+
+  # Face type distribution (PLANE, CYLINDER, CONE, SPHERE, TORUS, BSPLINE, etc.)
+  _face_types = {}
+  for _f in _faces:
+    _ft = str(_f.geom_type())
+    _face_types[_ft] = _face_types.get(_ft, 0) + 1
+  _metrics["face_types"] = _face_types
+
+  # Edge type distribution
+  _edge_types = {}
+  for _e in _edges:
+    _et = str(_e.geom_type())
+    _edge_types[_et] = _edge_types.get(_et, 0) + 1
+  _metrics["edge_types"] = _edge_types
+
+  # Validity check (OpenCascade BRepCheck_Analyzer)
+  _metrics["is_valid"] = bool(_shape.is_valid())
+
+  # Aspect ratios
+  if _metrics["min_dimension"] > 0:
+    _metrics["aspect_ratio"] = round(_metrics["max_dimension"] / _metrics["min_dimension"], 3)
+  else:
+    _metrics["aspect_ratio"] = 0
+
+  # Compactness (sphere has max compactness = 1.0)
+  if _metrics["volume"] > 0 and _metrics["surface_area"] > 0:
+    import math
+    _metrics["compactness"] = round((math.pi ** (1/3) * (6 * _metrics["volume"]) ** (2/3)) / _metrics["surface_area"], 4)
+  else:
+    _metrics["compactness"] = 0
+
+  # Center of mass
+  _com = _shape.center()
+  _metrics["center_of_mass"] = [round(float(_com.X), 3), round(float(_com.Y), 3), round(float(_com.Z), 3)]
+
+  # Symmetry hint: check if center of mass is near bounding box center
+  _bb_center = [round((_bb.min.X + _bb.max.X) / 2, 3), round((_bb.min.Y + _bb.max.Y) / 2, 3), round((_bb.min.Z + _bb.max.Z) / 2, 3)]
+  _com_offset = sum(abs(_metrics["center_of_mass"][i] - _bb_center[i]) for i in range(3))
+  _metrics["symmetry_hint"] = round(max(0, 1.0 - _com_offset / max(_metrics["max_dimension"], 0.001)), 4)
+
+except Exception as _e:
+  _metrics["error"] = str(_e)
+
+# Write metrics as JSON to a sidecar file
+_metrics_path = _stl_path.replace('.stl', '.metrics.json')
+with open(_metrics_path, 'w') as _mf:
+  _mf.write(_json.dumps(_metrics))
+
+print(f"METRICS_JSON:{_json.dumps(_metrics)}")
 print(f"Exported STL to {_stl_path} (auto-healed)")
 `
 
@@ -253,16 +421,34 @@ print(f"Exported STL to {_stl_path} (auto-healed)")
         const stlBuffer = await readFile(stlPath)
         console.log('[compile] Auto-healed successfully! Returning ' + stlBuffer.byteLength + ' bytes (fillets removed)')
 
+        // Extract BREP metrics from Python stdout
+        let geometryMetrics = null
+        if (hStdout) {
+          const metricsMatch = hStdout.match(/METRICS_JSON:(.+)/)
+          if (metricsMatch) {
+            try {
+              geometryMetrics = JSON.parse(metricsMatch[1])
+              console.log('[compile] BREP metrics:', JSON.stringify(geometryMetrics).substring(0, 200))
+            } catch {}
+          }
+        }
+
+        // If we have metrics, return them as a header (STL body stays binary)
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/octet-stream',
+          'Content-Length': String(stlBuffer.byteLength),
+        }
+        if (geometryMetrics) {
+          headers['X-Geometry-Metrics'] = JSON.stringify(geometryMetrics)
+        }
+
         await unlink(healedPyPath).catch(() => {})
         await unlink(pyPath).catch(() => {})
         await unlink(stlPath).catch(() => {})
 
         return new Response(stlBuffer, {
           status: 200,
-          headers: {
-            'Content-Type': 'application/octet-stream',
-            'Content-Length': String(stlBuffer.byteLength),
-          },
+          headers,
         })
       } catch (healErr: any) {
         console.error('[compile] Auto-heal retry also failed:', healErr.message)

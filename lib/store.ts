@@ -26,6 +26,7 @@ interface StoreState {
   constraints: Record<string, ConstraintOverride>
   agentLog: AgentLogEntry[]
   stlBuffer: ArrayBuffer | null
+  geometryMetrics: any
   isAutoRunning: boolean
   errorMessage: string
   designHistory: Array<{
@@ -58,6 +59,7 @@ interface StoreState {
   appendAgentLog: (entry: AgentLogEntry) => void
   clearAgentLog: () => void
   setStlBuffer: (buffer: ArrayBuffer | null) => void
+  setGeometryMetrics: (metrics: any) => void
   setAutoRunning: (val: boolean) => void
   setErrorMessage: (msg: string) => void
   setNemotronCritique: (
@@ -82,6 +84,7 @@ const defaultState = {
   constraints: {},
   agentLog: [],
   stlBuffer: null,
+  geometryMetrics: null,
   isAutoRunning: false,
   errorMessage: '',
   nemotronCritique: null,
@@ -120,6 +123,7 @@ export const useStore = create<StoreState>()((set) => ({
     })),
   clearAgentLog: () => set({ agentLog: [] }),
   setStlBuffer: (stlBuffer) => set({ stlBuffer }),
+  setGeometryMetrics: (geometryMetrics) => set({ geometryMetrics }),
   setAutoRunning: (isAutoRunning) => set({ isAutoRunning }),
   setErrorMessage: (errorMessage) => set({ errorMessage }),
   setNemotronCritique: (nemotronCritique) => set({ nemotronCritique }),
