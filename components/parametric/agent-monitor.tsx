@@ -369,10 +369,10 @@ export default function AgentMonitor() {
 
           {/* Bars */}
           <div className="space-y-1.5">
-            <ScoreBar label="Proportion" value={scores.proportion ?? 0} color="bg-blue-500" info="Dimension ratios — edit blue PARAM nodes to adjust" />
-            <ScoreBar label="Symmetry" value={scores.symmetry ?? 0} color="bg-green-500" info="Symmetry score — related to green GEOMETRY nodes" />
-            <ScoreBar label="Features" value={scores.featureCount ?? 0} color="bg-orange-500" info="Feature completeness — controlled by orange OPERATION nodes" />
-            <ScoreBar label="Params" value={scores.parameterRange ?? 0} color="bg-purple-500" info="Parameter validity — check purple TRANSFORM nodes" />
+            <ScoreBar label="Proportions" value={scores.proportion ?? 0} color="bg-blue-500" info="SpecMatch: Do actual dimensions match the target ratios?" />
+            <ScoreBar label="Symmetry" value={scores.symmetry ?? 0} color="bg-green-500" info="SpecMatch: Does geometry meet the symmetry requirement?" />
+            <ScoreBar label="Features" value={scores.featureCount ?? 0} color="bg-orange-500" info="SpecMatch: Are all requested features present in the BREP?" />
+            <ScoreBar label="Quality" value={scores.parameterRange ?? 0} color="bg-purple-500" info="Quality: BREP validity, manifold check, compactness, complexity" />
           </div>
 
           {/* Summary stats */}
