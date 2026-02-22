@@ -350,7 +350,7 @@ export default function PromptPanel() {
             <button
               onClick={analyzeAndGenerate}
               disabled={isAnalyzing || isLoading}
-              className="mt-1 px-3 py-1 rounded text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 transition-colors"
+              className="mt-1 px-3 py-1 rounded text-xs font-medium bg-white/10 hover:bg-white/20 text-white border border-white/20 disabled:opacity-50 transition-colors"
             >
               {isAnalyzing ? 'Analyzing...' : 'Generate from Image'}
             </button>
