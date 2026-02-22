@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { RotateCcw, Maximize, Grid3x3, Eye, EyeOff, Download } from 'lucide-react'
 import { useStore } from '@/lib/store'
 
 function parseBinarySTL(buffer: ArrayBuffer) {
@@ -230,39 +231,40 @@ export default function Viewport3D() {
     <div ref={containerRef} className="relative w-full h-full bg-[#0f0f12] min-h-[200px] overflow-hidden">
       <canvas ref={canvasRef} className="w-full h-full block" />
 
-      {/* ── Top-left: View presets ── */}
-      <div className="absolute top-2 left-2 flex gap-0.5 z-10">
+      {/* ── Top-left: Tools ── */}
+      <div className="absolute top-2 left-2 flex gap-1 z-10">
         {[
-          { label: 'Front', onClick: () => setView(0, Math.PI / 2) },
-          { label: 'Right', onClick: () => setView(Math.PI / 2, Math.PI / 2) },
-          { label: 'Top',   onClick: () => setView(0, 0.01) },
-          { label: 'Fit',   onClick: zoomToFit },
-          { label: 'Reset', onClick: resetView },
-        ].map((btn) => (
+          { icon: <Maximize className="w-3.5 h-3.5" />, onClick: zoomToFit, title: 'Fit to view' },
+          { icon: <RotateCcw className="w-3.5 h-3.5" />, onClick: resetView, title: 'Reset camera' },
+          { icon: wireframe ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />, onClick: () => setWireframe(!wireframe), title: wireframe ? 'Solid' : 'Wireframe', active: wireframe },
+          { icon: <Grid3x3 className="w-3.5 h-3.5" />, onClick: () => setShowGrid(!showGrid), title: showGrid ? 'Hide grid' : 'Show grid', active: showGrid },
+        ].map((btn, i) => (
           <button
-            key={btn.label}
+            key={i}
             onClick={btn.onClick}
-            className="px-2 py-1 rounded text-[10px] font-mono bg-black/40 text-gray-400 hover:text-gray-200 hover:bg-black/60 transition-all"
+            title={btn.title}
+            className={`p-1.5 rounded transition-all ${
+              btn.active
+                ? 'bg-white/15 text-white'
+                : 'bg-black/30 text-white/50 hover:text-white hover:bg-black/50'
+            }`}
           >
-            {btn.label}
+            {btn.icon}
           </button>
         ))}
       </div>
 
-      {/* ── Top-right: Display toggles ── */}
-      <div className="absolute top-2 right-2 flex gap-0.5 z-10">
+      {/* ── Bottom-left: View presets ── */}
+      <div className="absolute bottom-8 left-2 flex gap-1 z-10">
         {[
-          { label: wireframe ? 'Wire' : 'Solid', onClick: () => setWireframe(!wireframe), active: wireframe },
-          { label: 'Grid',  onClick: () => setShowGrid(!showGrid),  active: showGrid },
+          { label: 'Front', onClick: () => setView(0, Math.PI / 2) },
+          { label: 'Right', onClick: () => setView(Math.PI / 2, Math.PI / 2) },
+          { label: 'Top', onClick: () => setView(0, 0.01) },
         ].map((btn) => (
           <button
             key={btn.label}
             onClick={btn.onClick}
-            className={`px-2 py-1 rounded text-[10px] font-mono transition-all ${
-              btn.active
-                ? 'bg-blue-600/80 text-white'
-                : 'bg-black/40 text-gray-400 hover:text-gray-200 hover:bg-black/60'
-            }`}
+            className="px-2 py-1 rounded text-[10px] font-mono bg-black/30 text-white/50 hover:text-white hover:bg-black/50 transition-all"
           >
             {btn.label}
           </button>
@@ -277,23 +279,15 @@ export default function Viewport3D() {
       )}
 
       {/* ── Bottom-right: Download ── */}
-      <div className="absolute bottom-2 right-2 z-10">
+      {stlBuffer && (
         <button
           onClick={downloadSTL}
-          disabled={!stlBuffer}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-mono transition-all ${
-            stlBuffer
-              ? 'bg-green-600/80 text-white hover:bg-green-500/90 shadow-sm'
-              : 'bg-black/30 text-gray-600 cursor-not-allowed'
-          }`}
           title="Download STL"
+          className="absolute bottom-2 right-2 z-10 p-2 rounded bg-black/30 text-white/50 hover:text-white hover:bg-black/50 transition-all"
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-            <path d="M5 7L1.5 3.5h2V0h3v3.5h2L5 7zM0 9h10v1H0z"/>
-          </svg>
-          ↓ Download STL
+          <Download className="w-4 h-4" />
         </button>
-      </div>
+      )}
 
       {/* ── Loading spinner ── */}
       {loading && (
