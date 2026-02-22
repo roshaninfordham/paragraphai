@@ -472,8 +472,8 @@ export default function AgentMonitor() {
               <div key={i} className="flex items-start gap-1.5 py-0.5">
                 <span className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${
                   entry.agent === 'Nemotron' ? 'bg-emerald-400' :
-                  entry.agent === 'Claude Logic' ? 'bg-purple-400' :
-                  entry.agent === 'Claude Code' ? 'bg-blue-400' :
+                  entry.agent === 'Tree Logic' ? 'bg-purple-400' :
+                  entry.agent === 'Script' ? 'bg-blue-400' :
                   entry.agent === 'Scoring' ? 'bg-amber-400' :
                   'bg-gray-400'
                 }`} />

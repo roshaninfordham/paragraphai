@@ -423,7 +423,7 @@ export default function NodeGraph() {
         if (codeRes.ok) {
           const { code } = await codeRes.json()
           store.setScadCode(code)
-          store.appendAgentLog({ agent: 'Claude Code', message: `Regenerated ${code.split('\n').length} lines of Build123d code`, timestamp: Date.now() })
+          store.appendAgentLog({ agent: 'Script', message: `Regenerated ${code.split('\n').length} lines of Build123d code`, timestamp: Date.now() })
 
           // Compile
           store.setPhase('compiling')

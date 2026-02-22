@@ -5,7 +5,7 @@ import type { DesignTree, ScoreResult } from '@/lib/types'
 import { useStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Send, Loader2, ChevronRight, X } from 'lucide-react'
+import { Send, Loader2, X } from 'lucide-react'
 
 // ─── Demo prompts ─────────────────────────────────────────────────
 const DEMO_PROMPTS = [

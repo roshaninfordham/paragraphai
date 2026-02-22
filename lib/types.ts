@@ -88,9 +88,9 @@ export interface HistoryEntry {
 // ─── Agent Log ────────────────────────────────────────────────────
 export type AgentName = 
   | 'Nemotron' 
-  | 'Claude Logic' 
-  | 'Claude Code' 
-  | 'OpenAI Critic' 
+  | 'Tree Logic' 
+  | 'Script' 
+  | 'Evaluation' 
   | 'Scoring' 
   | 'System'
 

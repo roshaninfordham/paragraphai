@@ -31,9 +31,9 @@ import type { HistoryEntry } from '@/lib/types'
 // ─── Agent color map ──────────────────────────────────────────────
 const AGENT_COLORS: Record<string, string> = {
   Nemotron: 'bg-blue-400',
-  'Claude Logic': 'bg-purple-400',
-  'Claude Code': 'bg-violet-400',
-  'OpenAI Critic': 'bg-orange-400',
+  'Tree Logic': 'bg-purple-400',
+  Script: 'bg-violet-400',
+  Evaluation: 'bg-orange-400',
   Scoring: 'bg-green-400',
   System: 'bg-gray-400',
 }

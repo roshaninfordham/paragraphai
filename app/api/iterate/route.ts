@@ -74,7 +74,7 @@ export async function POST(request: Request) {
         emit({ type: 'phase', phase: 'iterating', iteration })
         emit({
           type: 'agent_log',
-          agent: 'Claude Logic',
+          agent: 'Tree Logic',
           message: `Iteration ${iteration}: analyzing scores and planning improvements...`,
         })
 
@@ -140,7 +140,7 @@ Propose edits to improve the overall score from ${scores.overall}:`,
 
         emit({
           type: 'agent_log',
-          agent: 'Claude Logic',
+          agent: 'Tree Logic',
           message: `Planner completed via ${plannerProvider}`,
         })
 
@@ -153,7 +153,7 @@ Propose edits to improve the overall score from ${scores.overall}:`,
         emit({ type: 'edit_script', data: editScript })
         emit({
           type: 'agent_log',
-          agent: 'Claude Logic',
+          agent: 'Tree Logic',
           message: `Proposing ${editScript.edits.length} edit(s): ${editScript.edits.map((e) => `${e.key}=${e.value}`).join(', ')}`,
         })
 
@@ -163,8 +163,8 @@ Propose edits to improve the overall score from ${scores.overall}:`,
         // ── REGENERATE CODE ───────────────────────────────────
         emit({
           type: 'agent_log',
-          agent: 'Claude Code',
-          message: 'Regenerating OpenSCAD from updated parameters...',
+          agent: 'Script',
+          message: 'Regenerating Build123d from updated parameters...',
         })
 
         let rawCode: string
@@ -202,7 +202,7 @@ ${JSON.stringify(updatedTree, null, 2)}`,
 
         emit({
           type: 'agent_log',
-          agent: 'Claude Code',
+          agent: 'Script',
           message: `Code regen completed via ${codeProvider}`,
         })
 
