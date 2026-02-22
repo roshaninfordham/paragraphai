@@ -127,11 +127,12 @@ Image (photo/sketch/render)
 | Layout | react-resizable-panels | Resizable 4-panel split layout |
 | CAD Engine | Build123d + OpenCascade (Python) | BREP geometry → binary STL |
 | Intent Parser | NVIDIA Nemotron NIM + `guided_json` | NL → guaranteed-valid structured JSON |
-| Tree Builder | Claude Sonnet 4.5 (Anthropic) | JSON → typed dependency graph |
-| Code Generator | Claude Sonnet 4.5 (Anthropic) | Graph → Build123d Python |
-| Image Analysis | Nemotron Vision + Claude Vision | Image → DIR JSON (with fallback) |
+| Tree Builder | Claude Sonnet via resilientChat() | JSON → typed dependency graph |
+| Code Generator | Claude Sonnet via resilientChat() | Graph → Build123d Python |
+| LLM Fallback | Anthropic → OpenAI → Gemini → OpenRouter | Never fails — 4-provider cascade with cooldown |
+| Image Analysis | Nemotron Vision + OpenRouter/OpenAI/Gemini Vision | Image → DIR JSON (multi-provider fallback) |
 | Image Preprocessing | sharp | Resize, normalize, JPEG compress |
-| Scoring | Deterministic algorithms | Objective quality metrics (no LLM) |
+| Scoring | Hybrid BREP geometry + tree heuristics | Objective quality metrics from real OpenCascade shape data |
 
 ---
 
@@ -146,7 +147,9 @@ Image (photo/sketch/render)
 
 ### Reliability & Auto-Healing
 - **Fillet Auto-Heal** — fillet/chamfer failures auto-retry without fillets; model renders instead of failing
-- **3-Level Vision Fallback** — NVIDIA Vision → Claude Vision → raw text extraction
+- **4-Provider LLM Fallback** — `resilientChat()` tries Anthropic → OpenAI → Gemini → OpenRouter automatically; dead providers get 60s cooldown
+- **3-Level Vision Fallback** — NVIDIA Vision → OpenRouter/OpenAI/Gemini Vision → raw text extraction
+- **BREP Geometry Scoring** — real OpenCascade metrics (volume, face count, validity) extracted from compiled shapes, not just tree heuristics
 - **`guided_json` Constrained Decoding** — Nemotron physically cannot produce invalid JSON
 - **Defensive fillet wrapping** — code generator wraps fillets in `try/except` blocks
 
@@ -181,9 +184,10 @@ ParaGraph/
 ├── lib/
 │   ├── store.ts                    # Zustand global state
 │   ├── types.ts                    # TypeScript type definitions
-│   ├── ai-clients.ts              # LLM client wrappers + model constants
-│   ├── scoring.ts                  # Deterministic scoring functions
-│   └── image-dir.ts               # DIR schema + converter (if external)
+│   ├── ai-clients.ts              # Nemotron client + model constants
+│   ├── llm-clients.ts             # resilientChat() — 4-provider LLM fallback
+│   ├── scoring.ts                  # Hybrid BREP geometry + tree-heuristic scoring
+│   └── utils.ts                    # Shared utilities
 └── docs/
     ├── architecture.md             # Detailed technical architecture
     ├── dir-pipeline.md             # Image-to-design DIR documentation
@@ -230,8 +234,10 @@ pnpm dev
 | Variable | Where to get it | Used for |
 |:---|:---|:---|
 | `NVIDIA_API_KEY` | [build.nvidia.com](https://build.nvidia.com) | Nemotron intent parser + Vision |
-| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) | Claude tree builder + code gen |
-| `OPENROUTER_API_KEY` | [openrouter.ai](https://openrouter.ai) | Fallback routing + node editing |
+| `ANTHROPIC_API_KEY` | [console.anthropic.com](https://console.anthropic.com) | Primary LLM for tree builder + code gen |
+| `OPENAI_API_KEY` | [platform.openai.com](https://platform.openai.com) | Fallback LLM (GPT-4o) |
+| `GOOGLE_GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) | Fallback LLM (Gemini 2.0 Flash) |
+| `OPENROUTER_API_KEY` | [openrouter.ai](https://openrouter.ai) | Last-resort multi-model routing |
 
 ---
 
@@ -274,9 +280,11 @@ pnpm dev
 | Claude tree build | ~$0.002 |
 | Claude code gen | ~$0.003 |
 | Compilation + scoring | $0 (local Python) |
+| LLM fallback providers | 4 (Anthropic → OpenAI → Gemini → OpenRouter) |
+| BREP metrics extracted | ~20 (volume, faces, validity, symmetry, etc.) |
 | Build123d primitives | 17 (Box, Cylinder, Sphere, Cone, Torus + boolean ops) |
 | DIR geometry families | 7 (revolve, extrude, boxy, cylindrical, gear, bracket, panel) |
-| Vision fallback levels | 3 (NVIDIA Vision → Claude Vision → raw text) |
+| Vision fallback levels | 4 (NVIDIA Vision → OpenRouter → OpenAI → Gemini) |
 
 ---
 

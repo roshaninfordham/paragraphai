@@ -104,15 +104,37 @@ Building ParaGraph in 48 hours at Tech@NYU Startup Week 2026 Buildathon required
 
 ---
 
+## 11. BREP Geometry Scoring — Tree Heuristics ≠ Real Shape Quality (Hour 36)
+
+**Challenge:** Our scoring engine only analyzed the JSON tree structure — counting nodes, checking parameter ranges, and guessing symmetry from node types. A tree that *looked* good structurally could generate geometry with zero volume, invalid topology, or wildly wrong proportions. The scoring was essentially fiction.
+
+**Solution:** Built a hybrid BREP geometry + tree-heuristic scoring pipeline. After Build123d compiles the shape, we extract ~20 metrics directly from the OpenCascade kernel: volume, surface area, face/edge counts, face type distribution (planar, cylindrical, conical, toroidal), bounding box, center of mass, validity flag, compactness ratio, and symmetry hint. These metrics are passed via HTTP header (`X-Geometry-Metrics`) back to the frontend, which re-scores using real geometry data. Invalid shapes get capped at 50%.
+
+**Impact:** Score now reflects actual geometry quality. A gear with 24 correctly formed teeth scores higher than a gear with 6 malformed ones. Proportion scoring uses real bounding box aspect ratio, not parameter guesses.
+
+---
+
+## 12. Anthropic Credits Exhausted During Demo Prep (Hour 40)
+
+**Challenge:** Our Anthropic API balance ran out mid-testing. Three critical routes (`generate`, `iterate`, `analyze-image`) imported `@anthropic-ai/sdk` directly — when credits hit zero, the entire app produced 500 errors. A complete demo-breaker.
+
+**Solution:** Built `resilientChat()` in `lib/llm-clients.ts` — a multi-provider fallback that tries Anthropic → OpenAI GPT-4o → Google Gemini 2.0 Flash → OpenRouter (multi-model) in sequence. Failed providers get a 60-second cooldown to avoid hammering dead APIs. The function returns `{ text, provider }` so the Agent Monitor displays which provider handled each step. Replaced all 7 direct LLM calls across 5 route files. Vision analysis got its own 3-provider fallback (OpenRouter → OpenAI → Gemini, all supporting image input).
+
+**Impact:** App is now unkillable — if any single provider goes down, it automatically cascades to the next. During our demo, we can unplug any API key and the pipeline keeps running. SSE events show judges which provider is active.
+
+---
+
 ## Key Metrics
 
 | Metric | Value |
 |---|---|
 | Total agents | 4 (Nemotron, Claude Logic, Claude Code, Scoring Engine) |
+| LLM providers | 4 (Anthropic, OpenAI, Gemini, OpenRouter) with automatic fallback |
 | Average generation time | ~8-15 seconds end-to-end |
 | Cost per generation | ~$0.006 |
-| Build123d primitives supported | 17 (Box, Cylinder, Sphere, Cone, Torus, + operations) |
+| BREP metrics extracted | ~20 (volume, surface area, face types, validity, symmetry) |
+| Build123d primitives supported | 17 (Box, Cylinder, Sphere, Cone, Torus + operations) |
 | STL export format | Binary STL (universal) |
 | Scoring dimensions | 4 (proportion, symmetry, features, parameters) |
 | DIR families supported | 7 (revolve, extrude, boxy, cylindrical, gear, bracket, panel) |
-| Vision fallback strategies | 3 (NVIDIA → Claude → raw text) |
+| Vision fallback strategies | 3+ (NVIDIA → OpenRouter/OpenAI/Gemini → raw text) |
