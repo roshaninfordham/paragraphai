@@ -333,10 +333,12 @@ OPERATIONS:
 - Revolve: revolve(sketch, axis, arc)
 
 POSITIONING:
-- Pos(X=x, Y=y, Z=z) * shape — translate
-- Rot(X=rx, Y=ry, Z=rz) * shape — rotate
+- Pos(x, y, z) * shape — translate (positional args only, NOT keyword)
+- Rot(x, y, z) * shape — rotate (positional args only, NOT keyword)
 - Locations: for loc in GridLocations(x_spacing, y_spacing, x_count, y_count): ...
 - PolarLocations(radius, count) — for circular patterns
+
+IMPORTANT: Do NOT use .scale() method or keyword arguments like X=, Y=, Z= in Pos/Rot. Use positional arguments only: Pos(10, 20, 0) not Pos(X=10, Y=20, Z=0). For scaling, multiply dimensions directly in the primitive constructor instead of using a scale operation.
 
 IMPORTANT: The variable MUST be called \`result\`. This is non-negotiable.
 Always generate complete, runnable Build123d code. Never use placeholders.
