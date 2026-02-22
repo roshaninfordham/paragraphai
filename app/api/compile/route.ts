@@ -153,6 +153,9 @@ print(f"Exported STL to {_stl_path}")
     const stlBuffer = await readFile(stlPath)
     console.log(`[compile] Returning ${stlBuffer.byteLength} bytes of STL`)
 
+    await unlink(pyPath).catch(() => {})
+    await unlink(stlPath).catch(() => {})
+
     return new Response(stlBuffer, {
       status: 200,
       headers: {
@@ -251,6 +254,8 @@ print(f"Exported STL to {_stl_path} (auto-healed)")
         console.log('[compile] Auto-healed successfully! Returning ' + stlBuffer.byteLength + ' bytes (fillets removed)')
 
         await unlink(healedPyPath).catch(() => {})
+        await unlink(pyPath).catch(() => {})
+        await unlink(stlPath).catch(() => {})
 
         return new Response(stlBuffer, {
           status: 200,

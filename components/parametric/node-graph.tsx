@@ -520,23 +520,59 @@ export default function NodeGraph() {
                   let newValue: number | null = null
                   const lower = instruction.toLowerCase().trim()
 
-                  if (lower.includes('double')) newValue = currentValue * 2
+                  // ── Percentage changes: "make it 23.65% bigger", "increase by 50%", "reduce 10%" ──
+                  const pctUpMatch = lower.match(/(\d+\.?\d*)\s*%\s*(?:bigger|larger|more|increase|up|greater|higher|taller|wider|thicker)/)
+                  const pctDownMatch = lower.match(/(\d+\.?\d*)\s*%\s*(?:smaller|less|decrease|down|lower|shorter|narrower|thinner|reduce)/)
+                  const pctGenericMatch = lower.match(/(?:increase|grow|scale up|bigger|larger|more|up)\s*(?:by)?\s*(\d+\.?\d*)\s*%/)
+                  const pctGenericDownMatch = lower.match(/(?:decrease|shrink|scale down|smaller|less|reduce|down)\s*(?:by)?\s*(\d+\.?\d*)\s*%/)
+                  const pctPlainMatch = lower.match(/(\d+\.?\d*)\s*%/)
+
+                  if (pctUpMatch) newValue = currentValue * (1 + parseFloat(pctUpMatch[1]) / 100)
+                  else if (pctDownMatch) newValue = currentValue * (1 - parseFloat(pctDownMatch[1]) / 100)
+                  else if (pctGenericMatch) newValue = currentValue * (1 + parseFloat(pctGenericMatch[1]) / 100)
+                  else if (pctGenericDownMatch) newValue = currentValue * (1 - parseFloat(pctGenericDownMatch[1]) / 100)
+
+                  // ── Multipliers: "double", "triple", "half", "quarter" ──
+                  else if (lower.includes('double')) newValue = currentValue * 2
                   else if (lower.includes('triple')) newValue = currentValue * 3
+                  else if (lower.includes('quadruple')) newValue = currentValue * 4
                   else if (lower.includes('halve') || lower.includes('half')) newValue = currentValue / 2
+                  else if (lower.includes('quarter')) newValue = currentValue / 4
 
-                  const setMatch = lower.match(/(?:set|change|make)\s*(?:it|to|=)?\s*(\d+\.?\d*)/)
-                  if (setMatch) newValue = parseFloat(setMatch[1])
+                  // ── Relative: "make it bigger/smaller" without a number → default 20% ──
+                  else if (/\b(bigger|larger|more|increase|taller|wider|thicker|longer)\b/.test(lower) && !pctPlainMatch) newValue = currentValue * 1.2
+                  else if (/\b(smaller|less|decrease|shorter|narrower|thinner|reduce|compact)\b/.test(lower) && !pctPlainMatch) newValue = currentValue * 0.8
 
-                  const incMatch = lower.match(/(?:increase|add|plus|\+)\s*(?:by)?\s*(\d+\.?\d*)/)
-                  if (incMatch) newValue = currentValue + parseFloat(incMatch[1])
+                  // ── Absolute set: "set to 50", "change to 100", "make it 25" ──
+                  else if (/(?:set|change|make)\s*(?:it|to|=)?\s*(\d+\.?\d*)/.test(lower)) {
+                    const m = lower.match(/(?:set|change|make)\s*(?:it|to|=)?\s*(\d+\.?\d*)/)
+                    if (m) newValue = parseFloat(m[1])
+                  }
 
-                  const decMatch = lower.match(/(?:decrease|subtract|reduce|minus|\-)\s*(?:by)?\s*(\d+\.?\d*)/)
-                  if (decMatch) newValue = currentValue - parseFloat(decMatch[1])
+                  // ── Arithmetic: "increase by 10", "add 5", "subtract 3" ──
+                  else {
+                    const incMatch = lower.match(/(?:increase|add|plus|\+)\s*(?:by)?\s*(\d+\.?\d*)/)
+                    const decMatch = lower.match(/(?:decrease|subtract|reduce|minus|\-)\s*(?:by)?\s*(\d+\.?\d*)/)
+                    const mulMatch = lower.match(/(?:multiply|times|x)\s*(?:by)?\s*(\d+\.?\d*)/)
+                    const divMatch = lower.match(/(?:divide)\s*(?:by)?\s*(\d+\.?\d*)/)
 
-                  const mulMatch = lower.match(/(?:multiply|times|x)\s*(?:by)?\s*(\d+\.?\d*)/)
-                  if (mulMatch) newValue = currentValue * parseFloat(mulMatch[1])
+                    if (incMatch) newValue = currentValue + parseFloat(incMatch[1])
+                    else if (decMatch) newValue = currentValue - parseFloat(decMatch[1])
+                    else if (mulMatch) newValue = currentValue * parseFloat(mulMatch[1])
+                    else if (divMatch && parseFloat(divMatch[1]) !== 0) newValue = currentValue / parseFloat(divMatch[1])
+                  }
 
+                  // ── Plain percentage with context: "23.65% bigger" already caught above ──
+                  // ── If just a percentage with no direction word, treat as increase ──
+                  if (newValue === null && pctPlainMatch) {
+                    newValue = currentValue * (1 + parseFloat(pctPlainMatch[1]) / 100)
+                  }
+
+                  // ── Plain number: user just typed "50" ──
                   if (newValue === null && /^\d+\.?\d*$/.test(lower)) newValue = parseFloat(lower)
+
+                  // Round to 2 decimal places for cleanliness
+                  if (newValue !== null) newValue = Math.round(newValue * 100) / 100
 
                   // If local parsing failed, try the API
                   if (newValue === null) {
@@ -545,8 +581,8 @@ export default function NodeGraph() {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          instruction: instruction,
-                          node: { id: paramKey, type: 'geometry', label: param.key, op: 'cube', params: { [param.key]: param.value } },
+                          instruction: 'The parameter "' + param.key + '" currently has value ' + currentValue + ' (unit: ' + (param.unit || 'none') + '). The user says: "' + instruction + '". Return the updated value for this parameter as JSON: {"' + param.key + '": newValue}',
+                          node: { id: paramKey, type: 'geometry', label: param.key, op: 'cube', params: { [param.key]: currentValue } },
                           fullTree: designTree,
                         }),
                       })

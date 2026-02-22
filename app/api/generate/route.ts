@@ -22,8 +22,18 @@ function parseJSON<T>(text: string, fallback: T): T {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json()
-  const prompt: string = body.prompt ?? ''
+  let body: any
+
+  try {
+    body = await request.json()
+  } catch {
+    return new Response(
+      JSON.stringify({ error: 'Invalid JSON body' }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+
+  const prompt: string = body?.prompt ?? ''
 
   const stream = new ReadableStream({
     async start(controller) {
