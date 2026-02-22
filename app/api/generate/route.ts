@@ -351,6 +351,28 @@ IMPORTANT: The variable MUST be called \`result\`. This is non-negotiable.
 Always generate complete, runnable Build123d code. Never use placeholders.
 IMPORTANT: When using fillet() or chamfer(), always use try/except to catch failures and fall back to the unfilleted shape. Fillet radii that are too large for small edges will crash. Example: try:\n  result = fillet(box.edges(), 2)\nexcept ValueError:\n  result = box
 Output ONLY valid Python code with no markdown and no backticks.
+PATTERN AND HOLE RULES:
+- When creating patterns of holes, slots, or cutouts: ALWAYS use boolean SUBTRACTION (shape - hole). Do NOT add material — remove it.
+- A grid pattern or crosshatch pattern means: start with a solid base, then SUBTRACT a grid of rectangular or cylindrical holes through it.
+- "Holes" means material is REMOVED, not added. Use: base_shape - Pos(x, y, 0) * Cylinder(hole_radius, thickness + 2)
+- For a lattice/mesh/grid pattern: create the solid disc/panel first, then subtract rows of slots in two perpendicular directions using a loop.
+- Example lattice disc:
+from build123d import *
+import math
+radius = 25
+thickness = 3
+slot_width = 2
+slot_count = 8
+disc = Cylinder(radius, thickness)
+for i in range(slot_count):
+    offset = -radius + (i + 1) * (2 * radius) / (slot_count + 1)
+    slot = Pos(offset, 0, 0) * Box(slot_width, radius * 2, thickness + 2)
+    disc = disc - slot
+for i in range(slot_count):
+    offset = -radius + (i + 1) * (2 * radius) / (slot_count + 1)
+    slot = Pos(0, offset, 0) * Box(radius * 2, slot_width, thickness + 2)
+    disc = disc - slot
+result = disc
 Brief comments are OK. You have full freedom to use loops, math, helper functions, and trigonometry to create complex geometry like gear teeth, patterns, organic shapes, and involute profiles. Do not simplify — generate the most accurate geometry possible.
 
 EXAMPLE — Spur gear with involute teeth:

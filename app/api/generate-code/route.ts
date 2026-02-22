@@ -50,6 +50,28 @@ except ValueError:
   result = box
 
 Output ONLY valid Python code with no markdown and no backticks.
+PATTERN AND HOLE RULES:
+- When creating patterns of holes, slots, or cutouts: ALWAYS use boolean SUBTRACTION (shape - hole). Do NOT add material — remove it.
+- A grid pattern or crosshatch pattern means: start with a solid base, then SUBTRACT a grid of rectangular or cylindrical holes through it.
+- "Holes" means material is REMOVED, not added. Use: base_shape - Pos(x, y, 0) * Cylinder(hole_radius, thickness + 2)
+- For a lattice/mesh/grid pattern: create the solid disc/panel first, then subtract rows of slots in two perpendicular directions using a loop.
+- Example lattice disc:
+from build123d import *
+import math
+radius = 25
+thickness = 3
+slot_width = 2
+slot_count = 8
+disc = Cylinder(radius, thickness)
+for i in range(slot_count):
+    offset = -radius + (i + 1) * (2 * radius) / (slot_count + 1)
+    slot = Pos(offset, 0, 0) * Box(slot_width, radius * 2, thickness + 2)
+    disc = disc - slot
+for i in range(slot_count):
+    offset = -radius + (i + 1) * (2 * radius) / (slot_count + 1)
+    slot = Pos(0, offset, 0) * Box(radius * 2, slot_width, thickness + 2)
+    disc = disc - slot
+result = disc
 Brief comments are OK. You have full freedom to use loops, math, and helper functions.`,
       },
       {
