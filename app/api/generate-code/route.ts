@@ -32,6 +32,14 @@ CRITICAL SYNTAX RULES:
 - NEVER use Rot(X=x, Y=y, Z=z). Use Rot(x, y, z) with positional args only.
 - align parameter IS allowed as keyword: Box(10, 10, 5, align=(Align.CENTER, Align.CENTER, Align.MIN))
 
+2D vs 3D DIMENSION RULES (violating these causes "Dimensions of objects to subtract from are inconsistent"):
+- NEVER use Circle() as a subtraction target. Circle() is 2D — you CANNOT subtract a 3D Box/Cylinder from it.
+- NEVER use BuildSketch() or make_face() as a base for boolean subtraction.
+- ALWAYS use 3D primitives (Cylinder, Box, Sphere, Cone, Torus) as the base shape for any subtraction.
+- To make a flat disc: use Cylinder(radius, thickness) — this is 3D. Do NOT use Circle(radius).
+- FORBIDDEN: base = Circle(12.5); base = base - Box(...)  ← 2D minus 3D = CRASH
+- CORRECT:   disc = Cylinder(12.5, 2.5); disc = disc - Box(...)  ← 3D minus 3D = OK
+
 OPERATIONS:
 - Boolean union: shape1 + shape2
 - Boolean subtraction: shape1 - shape2
@@ -52,7 +60,9 @@ except ValueError:
 Output ONLY valid Python code with no markdown and no backticks.
 PATTERN AND HOLE RULES:
 - When creating patterns of holes, slots, or cutouts: ALWAYS use boolean SUBTRACTION (shape - hole). Do NOT add material — remove it.
-- The base solid MUST be created FIRST, BEFORE any subtraction loops. Never subtract from nothing.
+- The base solid MUST be a 3D primitive (Cylinder, Box, etc.) created FIRST, BEFORE any subtraction loops. Never subtract from nothing.
+- NEVER start with Circle(), BuildSketch(), or make_face() — these are 2D and CANNOT be subtracted from with 3D shapes.
+- For a flat disc base, ALWAYS use Cylinder(radius, thickness) — NEVER Circle(radius).
 - Cutting tool dimensions MUST be LARGER than the base shape in the cut-through direction. For a disc of thickness T, subtraction box height must be T + 4 or more.
 - Cutting tool length MUST exceed the base shape diameter/width so the cut goes fully through.
 - After all subtractions, the result MUST still be a valid solid with volume > 0. Do not over-subtract.

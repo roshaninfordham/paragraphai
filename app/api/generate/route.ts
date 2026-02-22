@@ -330,6 +330,14 @@ CRITICAL SYNTAX RULES:
 - NEVER use Rot(X=x, Y=y, Z=z). Use Rot(x, y, z) with positional args only.
 - align parameter IS allowed as keyword: Box(10, 10, 5, align=(Align.CENTER, Align.CENTER, Align.MIN))
 
+2D vs 3D DIMENSION RULES (violating these causes "Dimensions of objects to subtract from are inconsistent"):
+- NEVER use Circle() as a subtraction target. Circle() is 2D — you CANNOT subtract a 3D Box/Cylinder from it.
+- NEVER use BuildSketch() or make_face() as a base for boolean subtraction.
+- ALWAYS use 3D primitives (Cylinder, Box, Sphere, Cone, Torus) as the base shape for any subtraction.
+- To make a flat disc: use Cylinder(radius, thickness) — this is 3D. Do NOT use Circle(radius).
+- FORBIDDEN: base = Circle(12.5); base = base - Box(...)  ← 2D minus 3D = CRASH
+- CORRECT:   disc = Cylinder(12.5, 2.5); disc = disc - Box(...)  ← 3D minus 3D = OK
+
 OPERATIONS:
 - Fillet: fillet(edges, radius) — e.g. result = fillet(box.edges(), 2)
 - Chamfer: chamfer(edges, length) — e.g. result = chamfer(box.edges(), 1)
@@ -353,7 +361,9 @@ IMPORTANT: When using fillet() or chamfer(), always use try/except to catch fail
 Output ONLY valid Python code with no markdown and no backticks.
 PATTERN AND HOLE RULES:
 - When creating patterns of holes, slots, or cutouts: ALWAYS use boolean SUBTRACTION (shape - hole). Do NOT add material — remove it.
-- The base solid MUST be created FIRST, BEFORE any subtraction loops. Never subtract from nothing.
+- The base solid MUST be a 3D primitive (Cylinder, Box, etc.) created FIRST, BEFORE any subtraction loops. Never subtract from nothing.
+- NEVER start with Circle(), BuildSketch(), or make_face() — these are 2D and CANNOT be subtracted from with 3D shapes.
+- For a flat disc base, ALWAYS use Cylinder(radius, thickness) — NEVER Circle(radius).
 - Cutting tool dimensions MUST be LARGER than the base shape in the cut-through direction. For a disc of thickness T, subtraction box height must be T + 4 or more.
 - Cutting tool length MUST exceed the base shape diameter/width so the cut goes fully through.
 - After all subtractions, the result MUST still be a valid solid with volume > 0. Do not over-subtract.
@@ -474,11 +484,21 @@ ${JSON.stringify(designTree, null, 2)}`,
         const firstSubtractLine = build123dCode.split('\n').findIndex(l => l.includes(' - ') && !l.trimStart().startsWith('#'))
         const firstAssignLine = build123dCode.split('\n').findIndex(l => /^\w+\s*=\s*(Cylinder|Box|Sphere|Cone|Torus)/.test(l.trim()))
 
-        if (hasSubtraction && (!hasBaseShape || (firstSubtractLine >= 0 && firstAssignLine >= 0 && firstSubtractLine < firstAssignLine))) {
+        // Check for 2D vs 3D dimension mismatch — Circle/BuildSketch/make_face used as subtraction target
+        const has2DBase = /\b(Circle|BuildSketch|make_face|RectangleRounded)\s*\(/.test(build123dCode)
+        const subtractsFrom2D = has2DBase && hasSubtraction
+
+        const orderBug = hasSubtraction && (!hasBaseShape || (firstSubtractLine >= 0 && firstAssignLine >= 0 && firstSubtractLine < firstAssignLine))
+        const needsFix = orderBug || subtractsFrom2D
+
+        if (needsFix) {
+          const reason = subtractsFrom2D
+            ? 'Validation: detected 2D shape (Circle/Sketch) used as subtraction target — requesting fix...'
+            : 'Validation: detected subtraction before base solid — requesting fix...'
           emit({
             type: 'agent_log',
             agent: 'Script',
-            message: 'Validation: detected subtraction before base solid — requesting fix...',
+            message: reason,
           })
 
           try {
@@ -490,10 +510,12 @@ ${JSON.stringify(designTree, null, 2)}`,
 
 CHECK THESE RULES:
 1. Is a base solid (Cylinder, Box, etc.) created BEFORE any boolean subtraction ( - ) operations? If not, move it before.
-2. Are all subtraction/cutting tool dimensions LARGER than the base shape? For a disc of thickness T, cutting boxes must have height > T+2. For a disc of radius R, cutting boxes must have length > R*2+2.
-3. Will the result have non-zero volume after all subtractions? If slots are too close together or too wide, reduce count or width.
-4. Does the code use positional args only for Cylinder, Box, etc? No keyword args like r=, h=, l=.
-5. Is the final result assigned to a variable called 'result'?
+2. DIMENSION MISMATCH: Is Circle(), BuildSketch(), or make_face() used as a subtraction target? Circle is 2D — you CANNOT subtract a 3D Box from it. Replace Circle(r) with Cylinder(r, thickness) to make it 3D BEFORE any subtraction.
+3. Are all subtraction/cutting tool dimensions LARGER than the base shape? For a disc of thickness T, cutting boxes must have height > T+2. For a disc of radius R, cutting boxes must have length > R*2+2.
+4. Will the result have non-zero volume after all subtractions? If slots are too close together or too wide, reduce count or width.
+5. Does the code use positional args only for Cylinder, Box, etc? No keyword args like r=, h=, l=.
+6. Is the final result assigned to a variable called 'result'?
+7. Is the code in Algebra mode (no 'with BuildPart()' or 'with BuildSketch()')? If builder mode is used, rewrite in algebra mode using from build123d import *.
 
 If the code is already correct, return it unchanged. Otherwise fix the issues and return corrected code.`,
                 },
