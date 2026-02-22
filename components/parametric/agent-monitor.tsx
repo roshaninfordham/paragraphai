@@ -290,16 +290,16 @@ export default function AgentMonitor() {
             message={states.nemotron.isDone ? getFlowMessage('Nemotron', agentLog) : undefined}
           />
 
-          {/* ── Claude Logic ── */}
+          {/* ── Tree Logic ── */}
           <AgentCard
             name="Tree Logic" role="Tree Builder — constructs parametric dependency graph"
             model="claude-sonnet-4-5" icon="CL"
             colorBg="bg-purple-950" colorBorder="border-purple-500/50"
             colorDot="bg-purple-400" colorGlow="purple"
-            {...states.claudeLogic} tokens={agentMetrics['Claude Logic']?.tokens ?? (states.claudeLogic.isDone ? 1300 : undefined)}
-            cost={agentMetrics['Claude Logic']?.cost ?? (states.claudeLogic.isDone ? 0.0085 : undefined)}
+            {...states.claudeLogic} tokens={agentMetrics['Tree Logic']?.tokens ?? (states.claudeLogic.isDone ? 1300 : undefined)}
+            cost={agentMetrics['Tree Logic']?.cost ?? (states.claudeLogic.isDone ? 0.0085 : undefined)}
             startTime={agentTimers.claudeLogic}
-            output={designTree ? `Tree: ${JSON.stringify(designTree).substring(0, 200)}...` : getAgentOutput('Claude Logic', agentLog)}
+            output={designTree ? `Tree: ${JSON.stringify(designTree).substring(0, 200)}...` : getAgentOutput('Tree Logic', agentLog)}
             expanded={expandedAgent === 'claudeLogic'}
             onToggle={() => setExpandedAgent(expandedAgent === 'claudeLogic' ? null : 'claudeLogic')}
           />
@@ -307,20 +307,20 @@ export default function AgentMonitor() {
           <FlowArrow
             active={states.claudeLogic.isActive}
             done={states.claudeLogic.isDone}
-            message={states.claudeLogic.isDone ? getFlowMessage('Claude Logic', agentLog) : undefined}
+            message={states.claudeLogic.isDone ? getFlowMessage('Tree Logic', agentLog) : undefined}
           />
 
-          {/* ── Claude Code ── */}
+          {/* ── Script ── */}
           <AgentCard
             name="Script" role="Code Generator — produces Build123d Python from tree"
             model="claude-sonnet-4-5" icon="CC"
             colorBg="bg-blue-950" colorBorder="border-blue-500/50"
             colorDot="bg-blue-400" colorGlow="blue"
             {...states.claudeCode}
-            tokens={agentMetrics['Claude Code']?.tokens ?? (states.claudeCode.isDone ? 500 : undefined)}
-            cost={agentMetrics['Claude Code']?.cost ?? (states.claudeCode.isDone ? 0.0072 : undefined)}
+            tokens={agentMetrics['Script']?.tokens ?? (states.claudeCode.isDone ? 500 : undefined)}
+            cost={agentMetrics['Script']?.cost ?? (states.claudeCode.isDone ? 0.0072 : undefined)}
             startTime={agentTimers.claudeCode}
-            output={scadCode ? scadCode.substring(0, 300) : getAgentOutput('Claude Code', agentLog)}
+            output={scadCode ? scadCode.substring(0, 300) : getAgentOutput('Script', agentLog)}
             expanded={expandedAgent === 'claudeCode'}
             onToggle={() => setExpandedAgent(expandedAgent === 'claudeCode' ? null : 'claudeCode')}
           />
@@ -328,10 +328,10 @@ export default function AgentMonitor() {
           <FlowArrow
             active={states.claudeCode.isActive}
             done={states.claudeCode.isDone}
-            message={states.claudeCode.isDone ? getFlowMessage('Claude Code', agentLog) : undefined}
+            message={states.claudeCode.isDone ? getFlowMessage('Script', agentLog) : undefined}
           />
 
-          {/* ── Scoring Engine ── */}
+          {/* ── Evaluation ── */}
           <AgentCard
             name="Evaluation" role="Deterministic Critic — evaluates geometry against spec"
             model="Pure Math — No LLM" icon="SE"
@@ -410,9 +410,9 @@ export default function AgentMonitor() {
                 `| Agent | Model | Tokens | Cost | Time |`,
                 `|-------|-------|--------|------|------|`,
                 `| Nemotron | nvidia-nemotron-nano-9b-v2 | ~${metrics['Nemotron']?.tokens ?? '?'} | $${(metrics['Nemotron']?.cost ?? 0).toFixed(4)} | ${metrics['Nemotron']?.endTime && agentTimers.nemotron ? ((metrics['Nemotron'].endTime - agentTimers.nemotron) / 1000).toFixed(1) + 's' : '?'} |`,
-                `| Claude Logic | claude-sonnet-4-5 | ~${metrics['Claude Logic']?.tokens ?? '?'} | $${(metrics['Claude Logic']?.cost ?? 0).toFixed(4)} | ${metrics['Claude Logic']?.endTime && agentTimers.claudeLogic ? ((metrics['Claude Logic'].endTime - agentTimers.claudeLogic) / 1000).toFixed(1) + 's' : '?'} |`,
-                `| Claude Code | claude-sonnet-4-5 | ~${metrics['Claude Code']?.tokens ?? '?'} | $${(metrics['Claude Code']?.cost ?? 0).toFixed(4)} | ${metrics['Claude Code']?.endTime && agentTimers.claudeCode ? ((metrics['Claude Code'].endTime - agentTimers.claudeCode) / 1000).toFixed(1) + 's' : '?'} |`,
-                `| Scoring Engine | Deterministic | 0 | $0.0000 | <0.1s |`,
+                `| Tree Logic | claude-sonnet-4-5 | ~${metrics['Tree Logic']?.tokens ?? '?'} | $${(metrics['Tree Logic']?.cost ?? 0).toFixed(4)} | ${metrics['Tree Logic']?.endTime && agentTimers.claudeLogic ? ((metrics['Tree Logic'].endTime - agentTimers.claudeLogic) / 1000).toFixed(1) + 's' : '?'} |`,
+                `| Script | claude-sonnet-4-5 | ~${metrics['Script']?.tokens ?? '?'} | $${(metrics['Script']?.cost ?? 0).toFixed(4)} | ${metrics['Script']?.endTime && agentTimers.claudeCode ? ((metrics['Script'].endTime - agentTimers.claudeCode) / 1000).toFixed(1) + 's' : '?'} |`,
+                `| Evaluation | Deterministic | 0 | $0.0000 | <0.1s |`,
                 '',
                 `**Total estimated cost:** ~$${Object.values(metrics).reduce((s, m) => s + m.cost, 0).toFixed(4)}`,
                 '',

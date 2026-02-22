@@ -203,7 +203,7 @@ PROMPT TO PARSE:
         emit({ type: 'phase', phase: 'building-tree' })
         emit({
           type: 'agent_log',
-          agent: 'Claude Logic',
+          agent: 'Tree Logic',
           message: 'Building parametric dependency tree...',
         })
 
@@ -268,11 +268,11 @@ Generate the DesignTree JSON:`,
           created_at: Date.now(),
         }
 
-        emit({ type: 'agent_done', agent: 'Claude Logic', tokens: treeText.length / 4 | 0, cost: (treeText.length / 4) * 0.000003 })
+        emit({ type: 'agent_done', agent: 'Tree Logic', tokens: treeText.length / 4 | 0, cost: (treeText.length / 4) * 0.000003 })
         emit({ type: 'tree', data: designTree })
         emit({
           type: 'agent_log',
-          agent: 'Claude Logic',
+          agent: 'Tree Logic',
           message: `Tree built: ${Object.keys(designTree.nodes).length} nodes, ${Object.keys(designTree.parameters).length} parameters`,
         })
 
@@ -280,7 +280,7 @@ Generate the DesignTree JSON:`,
         emit({ type: 'phase', phase: 'generating-code' })
         emit({
           type: 'agent_log',
-          agent: 'Claude Code',
+          agent: 'Script',
           message: 'Generating Build123d code from dependency tree...',
         })
 
@@ -384,11 +384,11 @@ ${JSON.stringify(designTree, null, 2)}`,
 
         const build123dCode = stripMarkdown(rawCode)
 
-        emit({ type: 'agent_done', agent: 'Claude Code', tokens: rawCode.length / 4 | 0, cost: (rawCode.length / 4) * 0.000003 })
+        emit({ type: 'agent_done', agent: 'Script', tokens: rawCode.length / 4 | 0, cost: (rawCode.length / 4) * 0.000003 })
         emit({ type: 'code', data: build123dCode })
         emit({
           type: 'agent_log',
-          agent: 'Claude Code',
+          agent: 'Script',
           message: `Generated ${build123dCode.split('\n').length} lines of Build123d code`,
         })
 
@@ -400,7 +400,7 @@ ${JSON.stringify(designTree, null, 2)}`,
         emit({ type: 'scores', data: scores })
         emit({
           type: 'agent_log',
-          agent: 'Scoring',
+          agent: 'Evaluation',
           message: `Score: ${scores.overall.toFixed(2)} — proportion:${scores.proportion.toFixed(2)} symmetry:${scores.symmetry.toFixed(2)} features:${scores.featureCount.toFixed(2)}`,
         })
 
