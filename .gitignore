@@ -33,3 +33,18 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# pnpm store
+.pnpm-store/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+*.stl
+paragraph-*.py
+
+# env variants
+.env.*.local
