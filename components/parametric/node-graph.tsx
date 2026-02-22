@@ -525,8 +525,77 @@ export default function NodeGraph() {
             nodeType={nodeType}
             onClose={() => setSelectedNodeId(null)}
             onEditSubmit={async (instruction) => {
-              setEditInstruction(instruction)
-              await handleEditSubmit()
+              if (!selectedNodeId || !designTree || !instruction.trim()) return
+              setIsEditLoading(true)
+              try {
+                const nodeToEdit = Object.values(designTree.nodes).find((n) => n.id === selectedNodeId)
+                if (!nodeToEdit) return
+
+                const response = await fetch('/api/edit-node', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    instruction: instruction,
+                    node: { id: nodeToEdit.id, type: 'geometry', label: nodeToEdit.label, op: nodeToEdit.op, params: nodeToEdit.params },
+                    fullTree: designTree,
+                  }),
+                })
+
+                if (!response.ok) return
+
+                const { params: updatedParams } = await response.json()
+
+                const updatedTree = {
+                  ...designTree,
+                  nodes: {
+                    ...designTree.nodes,
+                    [selectedNodeId]: { ...nodeToEdit, params: { ...nodeToEdit.params, ...updatedParams } },
+                  },
+                }
+
+                setDesignTree(updatedTree)
+
+                const store = useStore.getState()
+                store.appendAgentLog({ agent: 'System', message: 'Regenerating code after edit: ' + instruction, timestamp: Date.now() })
+                store.setPhase('generating-code')
+
+                const codeRes = await fetch('/api/generate-code', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ tree: updatedTree }),
+                })
+
+                if (codeRes.ok) {
+                  const { code } = await codeRes.json()
+                  store.setScadCode(code)
+                  store.setPhase('compiling')
+
+                  const compileRes = await fetch('/api/compile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code }),
+                  })
+
+                  if (compileRes.ok) {
+                    const stlBuffer = await compileRes.arrayBuffer()
+                    store.setStlBuffer(stlBuffer)
+                    store.addToHistory({
+                      scadCode: code,
+                      stlBuffer: stlBuffer,
+                      scores: null,
+                      tree: updatedTree,
+                      label: 'Edit: ' + instruction.substring(0, 30),
+                    })
+                  }
+                }
+                store.setPhase('done')
+                setSelectedNodeId(null)
+              } catch (error) {
+                console.error('[node-graph] Edit error:', error)
+                useStore.getState().setPhase('done')
+              } finally {
+                setIsEditLoading(false)
+              }
             }}
             isLoading={isEditLoading}
           />

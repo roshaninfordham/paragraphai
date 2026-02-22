@@ -147,6 +147,7 @@ export const useStore = create<StoreState>()((set) => ({
       stlBuffer: version.stlBuffer,
       scores: version.scores,
       designTree: version.tree,
+      phase: 'done' as const,
     }
   }),
   reset: () =>
