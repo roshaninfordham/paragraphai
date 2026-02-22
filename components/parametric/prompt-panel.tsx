@@ -6,6 +6,7 @@ import { useStore } from '@/lib/store'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Send, Loader2, X } from 'lucide-react'
+import { scoreDesign } from '@/lib/scoring'
 
 // ─── Demo prompts ─────────────────────────────────────────────────
 const DEMO_PROMPTS = [
@@ -190,7 +191,6 @@ export default function PromptPanel() {
       })
       // Re-score with real BREP metrics
       if (geometryMetrics && tree) {
-        const { scoreDesign } = await import('@/lib/scoring')
         const updatedScores = scoreDesign(tree, store.prompt, geometryMetrics)
         store.setScores(updatedScores)
         store.appendAgentLog({
