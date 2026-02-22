@@ -52,12 +52,14 @@ except ValueError:
 Output ONLY valid Python code with no markdown and no backticks.
 PATTERN AND HOLE RULES:
 - When creating patterns of holes, slots, or cutouts: ALWAYS use boolean SUBTRACTION (shape - hole). Do NOT add material — remove it.
-- A grid pattern or crosshatch pattern means: start with a solid base, then SUBTRACT a grid of rectangular or cylindrical holes through it.
-- "Holes" means material is REMOVED, not added. Use: base_shape - Pos(x, y, 0) * Cylinder(hole_radius, thickness + 2)
-- For a lattice/mesh/grid pattern: create the solid disc/panel first, then subtract rows of slots in two perpendicular directions using a loop.
-- Example lattice disc:
+- The base solid MUST be created FIRST, BEFORE any subtraction loops. Never subtract from nothing.
+- Cutting tool dimensions MUST be LARGER than the base shape in the cut-through direction. For a disc of thickness T, subtraction box height must be T + 4 or more.
+- Cutting tool length MUST exceed the base shape diameter/width so the cut goes fully through.
+- After all subtractions, the result MUST still be a valid solid with volume > 0. Do not over-subtract.
+- "Holes" means material is REMOVED, not added. Use: base_shape - Pos(x, y, 0) * Cylinder(hole_radius, thickness + 4)
+
+EXAMPLE — Axis-aligned grid lattice disc:
 from build123d import *
-import math
 radius = 25
 thickness = 3
 slot_width = 2
@@ -65,13 +67,37 @@ slot_count = 8
 disc = Cylinder(radius, thickness)
 for i in range(slot_count):
     offset = -radius + (i + 1) * (2 * radius) / (slot_count + 1)
-    slot = Pos(offset, 0, 0) * Box(slot_width, radius * 2, thickness + 2)
+    slot = Pos(offset, 0, 0) * Box(slot_width, radius * 2 + 4, thickness + 4)
     disc = disc - slot
 for i in range(slot_count):
     offset = -radius + (i + 1) * (2 * radius) / (slot_count + 1)
-    slot = Pos(0, offset, 0) * Box(radius * 2, slot_width, thickness + 2)
+    slot = Pos(0, offset, 0) * Box(radius * 2 + 4, slot_width, thickness + 4)
     disc = disc - slot
 result = disc
+
+EXAMPLE — Diagonal crosshatch lattice disc (diamond holes at 45 degrees):
+from build123d import *
+import math
+radius = 12.5
+thickness = 2.5
+slot_width = 1.5
+spacing = 3.5
+slot_count = 8
+disc = Cylinder(radius, thickness)
+cut_length = radius * 3  # MUST be larger than disc diameter
+cut_height = thickness + 4  # MUST be larger than disc thickness
+# Cut slots at +45 degrees
+for i in range(-slot_count, slot_count + 1):
+    offset = i * spacing
+    slot = Pos(offset * 0.707, -offset * 0.707, 0) * Rot(0, 0, 45) * Box(cut_length, slot_width, cut_height)
+    disc = disc - slot
+# Cut slots at -45 degrees
+for i in range(-slot_count, slot_count + 1):
+    offset = i * spacing
+    slot = Pos(offset * 0.707, offset * 0.707, 0) * Rot(0, 0, -45) * Box(cut_length, slot_width, cut_height)
+    disc = disc - slot
+result = disc
+
 Brief comments are OK. You have full freedom to use loops, math, and helper functions.`,
       },
       {

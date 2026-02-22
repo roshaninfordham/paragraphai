@@ -353,12 +353,14 @@ IMPORTANT: When using fillet() or chamfer(), always use try/except to catch fail
 Output ONLY valid Python code with no markdown and no backticks.
 PATTERN AND HOLE RULES:
 - When creating patterns of holes, slots, or cutouts: ALWAYS use boolean SUBTRACTION (shape - hole). Do NOT add material — remove it.
-- A grid pattern or crosshatch pattern means: start with a solid base, then SUBTRACT a grid of rectangular or cylindrical holes through it.
-- "Holes" means material is REMOVED, not added. Use: base_shape - Pos(x, y, 0) * Cylinder(hole_radius, thickness + 2)
-- For a lattice/mesh/grid pattern: create the solid disc/panel first, then subtract rows of slots in two perpendicular directions using a loop.
-- Example lattice disc:
+- The base solid MUST be created FIRST, BEFORE any subtraction loops. Never subtract from nothing.
+- Cutting tool dimensions MUST be LARGER than the base shape in the cut-through direction. For a disc of thickness T, subtraction box height must be T + 4 or more.
+- Cutting tool length MUST exceed the base shape diameter/width so the cut goes fully through.
+- After all subtractions, the result MUST still be a valid solid with volume > 0. Do not over-subtract.
+- "Holes" means material is REMOVED, not added. Use: base_shape - Pos(x, y, 0) * Cylinder(hole_radius, thickness + 4)
+
+EXAMPLE — Axis-aligned grid lattice disc:
 from build123d import *
-import math
 radius = 25
 thickness = 3
 slot_width = 2
@@ -366,13 +368,37 @@ slot_count = 8
 disc = Cylinder(radius, thickness)
 for i in range(slot_count):
     offset = -radius + (i + 1) * (2 * radius) / (slot_count + 1)
-    slot = Pos(offset, 0, 0) * Box(slot_width, radius * 2, thickness + 2)
+    slot = Pos(offset, 0, 0) * Box(slot_width, radius * 2 + 4, thickness + 4)
     disc = disc - slot
 for i in range(slot_count):
     offset = -radius + (i + 1) * (2 * radius) / (slot_count + 1)
-    slot = Pos(0, offset, 0) * Box(radius * 2, slot_width, thickness + 2)
+    slot = Pos(0, offset, 0) * Box(radius * 2 + 4, slot_width, thickness + 4)
     disc = disc - slot
 result = disc
+
+EXAMPLE — Diagonal crosshatch lattice disc (diamond holes at 45 degrees):
+from build123d import *
+import math
+radius = 12.5
+thickness = 2.5
+slot_width = 1.5
+spacing = 3.5
+slot_count = 8
+disc = Cylinder(radius, thickness)
+cut_length = radius * 3  # MUST be larger than disc diameter
+cut_height = thickness + 4  # MUST be larger than disc thickness
+# Cut slots at +45 degrees
+for i in range(-slot_count, slot_count + 1):
+    offset = i * spacing
+    slot = Pos(offset * 0.707, -offset * 0.707, 0) * Rot(0, 0, 45) * Box(cut_length, slot_width, cut_height)
+    disc = disc - slot
+# Cut slots at -45 degrees
+for i in range(-slot_count, slot_count + 1):
+    offset = i * spacing
+    slot = Pos(offset * 0.707, offset * 0.707, 0) * Rot(0, 0, -45) * Box(cut_length, slot_width, cut_height)
+    disc = disc - slot
+result = disc
+
 Brief comments are OK. You have full freedom to use loops, math, helper functions, and trigonometry to create complex geometry like gear teeth, patterns, organic shapes, and involute profiles. Do not simplify — generate the most accurate geometry possible.
 
 EXAMPLE — Spur gear with involute teeth:
@@ -439,7 +465,62 @@ ${JSON.stringify(designTree, null, 2)}`,
           message: `Completed via ${codeProvider}`,
         })
 
-        const build123dCode = stripMarkdown(rawCode)
+        let build123dCode = stripMarkdown(rawCode)
+
+        // ── CODE VALIDATION PASS ──────────────────────────────
+        // Quick structural check for common boolean subtraction failures
+        const hasSubtraction = build123dCode.includes(' - ') || build123dCode.includes('Mode.SUBTRACT')
+        const hasBaseShape = /^(disc|body|base|box|cyl|result|shape|part)\s*=\s*(Cylinder|Box|Sphere|Cone|Torus)/m.test(build123dCode)
+        const firstSubtractLine = build123dCode.split('\n').findIndex(l => l.includes(' - ') && !l.trimStart().startsWith('#'))
+        const firstAssignLine = build123dCode.split('\n').findIndex(l => /^\w+\s*=\s*(Cylinder|Box|Sphere|Cone|Torus)/.test(l.trim()))
+
+        if (hasSubtraction && (!hasBaseShape || (firstSubtractLine >= 0 && firstAssignLine >= 0 && firstSubtractLine < firstAssignLine))) {
+          emit({
+            type: 'agent_log',
+            agent: 'Script',
+            message: 'Validation: detected subtraction before base solid — requesting fix...',
+          })
+
+          try {
+            const fixResult = await resilientChat(
+              [
+                {
+                  role: 'system',
+                  content: `You are a Build123d code reviewer. Review the code below and fix any issues. Return ONLY the corrected Python code, no explanation.
+
+CHECK THESE RULES:
+1. Is a base solid (Cylinder, Box, etc.) created BEFORE any boolean subtraction ( - ) operations? If not, move it before.
+2. Are all subtraction/cutting tool dimensions LARGER than the base shape? For a disc of thickness T, cutting boxes must have height > T+2. For a disc of radius R, cutting boxes must have length > R*2+2.
+3. Will the result have non-zero volume after all subtractions? If slots are too close together or too wide, reduce count or width.
+4. Does the code use positional args only for Cylinder, Box, etc? No keyword args like r=, h=, l=.
+5. Is the final result assigned to a variable called 'result'?
+
+If the code is already correct, return it unchanged. Otherwise fix the issues and return corrected code.`,
+                },
+                {
+                  role: 'user',
+                  content: build123dCode,
+                },
+              ],
+              { maxTokens: 2000, temperature: 0.1, purpose: 'code-validation' }
+            )
+            const fixedCode = stripMarkdown(fixResult.text)
+            if (fixedCode.includes('result') && fixedCode.includes('from build123d')) {
+              build123dCode = fixedCode
+              emit({
+                type: 'agent_log',
+                agent: 'Script',
+                message: `Validation fix applied via ${fixResult.provider}`,
+              })
+            }
+          } catch {
+            emit({
+              type: 'agent_log',
+              agent: 'Script',
+              message: 'Validation fix skipped (provider unavailable)',
+            })
+          }
+        }
 
         emit({ type: 'agent_done', agent: 'Script', tokens: rawCode.length / 4 | 0, cost: 0 })
         emit({ type: 'code', data: build123dCode })
