@@ -215,30 +215,45 @@ export default function Viewport3D() {
   const loading = phase === 'generating-code' || phase === 'compiling' || phase === 'validating'
   const empty = !stlBuffer && (phase === 'idle' || phase === 'done')
 
+  const downloadSTL = () => {
+    if (!stlBuffer) return
+    const blob = new Blob([stlBuffer], { type: 'application/octet-stream' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'paragraph-design.stl'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div ref={containerRef} className="relative w-full h-full bg-[#0f0f12] min-h-[200px] overflow-hidden">
       <canvas ref={canvasRef} className="w-full h-full block" />
 
-      {/* ── Toolbar ── */}
+      {/* ── Top-left: View presets ── */}
       <div className="absolute top-2 left-2 flex gap-0.5 z-10">
         {[
-          { label: wireframe ? 'Wire' : 'Solid', onClick: () => setWireframe(!wireframe), active: wireframe },
-          { label: 'Grid', onClick: () => setShowGrid(!showGrid), active: showGrid },
-          { label: 'Reset', onClick: resetView },
-          { label: 'Fit', onClick: zoomToFit },
           { label: 'Front', onClick: () => setView(0, Math.PI / 2) },
           { label: 'Right', onClick: () => setView(Math.PI / 2, Math.PI / 2) },
-          { label: 'Top', onClick: () => setView(0, 0.01) },
-          { label: 'DL STL', onClick: () => {
-            if (!stlBuffer) return
-            const blob = new Blob([stlBuffer], { type: 'application/octet-stream' })
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = 'paragraph-design.stl'
-            a.click()
-            URL.revokeObjectURL(url)
-          }},
+          { label: 'Top',   onClick: () => setView(0, 0.01) },
+          { label: 'Fit',   onClick: zoomToFit },
+          { label: 'Reset', onClick: resetView },
+        ].map((btn) => (
+          <button
+            key={btn.label}
+            onClick={btn.onClick}
+            className="px-2 py-1 rounded text-[10px] font-mono bg-black/40 text-gray-400 hover:text-gray-200 hover:bg-black/60 transition-all"
+          >
+            {btn.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Top-right: Display toggles ── */}
+      <div className="absolute top-2 right-2 flex gap-0.5 z-10">
+        {[
+          { label: wireframe ? 'Wire' : 'Solid', onClick: () => setWireframe(!wireframe), active: wireframe },
+          { label: 'Grid',  onClick: () => setShowGrid(!showGrid),  active: showGrid },
         ].map((btn) => (
           <button
             key={btn.label}
@@ -254,12 +269,31 @@ export default function Viewport3D() {
         ))}
       </div>
 
-      {/* ── Info overlay ── */}
+      {/* ── Bottom-left: Mesh info ── */}
       {triCount > 0 && (
         <div className="absolute bottom-2 left-2 z-10 text-[9px] font-mono text-white/20">
           {triCount.toLocaleString()} tris · {dims.x}×{dims.y}×{dims.z} mm
         </div>
       )}
+
+      {/* ── Bottom-right: Download ── */}
+      <div className="absolute bottom-2 right-2 z-10">
+        <button
+          onClick={downloadSTL}
+          disabled={!stlBuffer}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-mono transition-all ${
+            stlBuffer
+              ? 'bg-blue-600/80 text-white hover:bg-blue-500/90'
+              : 'bg-black/30 text-gray-600 cursor-not-allowed'
+          }`}
+          title="Download STL"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
+            <path d="M5 7L1.5 3.5h2V0h3v3.5h2L5 7zM0 9h10v1H0z"/>
+          </svg>
+          Download STL
+        </button>
+      </div>
 
       {/* ── Loading spinner ── */}
       {loading && (
