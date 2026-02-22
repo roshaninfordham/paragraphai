@@ -182,19 +182,14 @@ export default function PromptPanel() {
         message: `3D geometry compiled successfully (${(stlBuffer.byteLength / 1024).toFixed(1)} KB)`,
         timestamp: Date.now(),
       })
-      store.addToHistory({
-        scadCode: code,
-        stlBuffer: stlBuffer,
-        scores: scores,
-        tree: tree,
-        label: `v${(useStore.getState().designHistory?.length || 0) + 1}`,
-      })
       // Re-score with real BREP metrics
+      let finalScores = scores
       if (geometryMetrics && tree) {
         const updatedScores = scoreDesign(tree, store.prompt, geometryMetrics)
         store.setScores(updatedScores)
+        finalScores = updatedScores
         store.appendAgentLog({
-          agent: 'Evaluation',
+          agent: 'Scoring',
           message: 'Re-scored with BREP metrics: ' + updatedScores.overall.toFixed(2) +
             ' (vol=' + (geometryMetrics.volume?.toFixed(1) || '?') +
             ' faces=' + (geometryMetrics.face_count || '?') +
@@ -202,6 +197,14 @@ export default function PromptPanel() {
           timestamp: Date.now(),
         })
       }
+
+      store.addToHistory({
+        scadCode: code,
+        stlBuffer: stlBuffer,
+        scores: finalScores,
+        tree: tree,
+        label: 'v' + ((useStore.getState().designHistory?.length || 0) + 1),
+      })
 
       store.setPhase('done')
     } catch (err) {
