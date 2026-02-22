@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openRouterChat } from '@/lib/llm-clients'
+import { resilientChat } from '@/lib/llm-clients'
 
 interface NodeData {
   id: string
@@ -47,7 +47,7 @@ Return: {height: 20, radius: 5}
 
 Only return the JSON object. No explanation, no markdown code blocks.`
 
-    const response = await openRouterChat(
+    const { text: textContent } = await resilientChat(
       [
         {
           role: 'system',
@@ -63,14 +63,12 @@ Return updated params as JSON only:`,
         },
       ],
       {
-        model: 'anthropic/claude-sonnet-4',
         maxTokens: 500,
-        temperature: 0.2, // Lower temperature for precise parameter editing
-        route: 'fallback',
+        temperature: 0.2,
+        purpose: 'node-editing',
       }
     )
 
-    const textContent = response.choices?.[0]?.message?.content
     if (!textContent) {
       return NextResponse.json(
         { error: 'No response from Claude' },

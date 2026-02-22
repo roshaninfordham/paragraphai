@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openRouterChat } from '@/lib/llm-clients'
+import { resilientChat } from '@/lib/llm-clients'
 
 export async function POST(req: NextRequest) {
   const { tree } = await req.json()
 
-  const response = await openRouterChat(
+  const { text } = await resilientChat(
     [
       {
         role: 'system',
@@ -21,11 +21,10 @@ export async function POST(req: NextRequest) {
         content: `Generate Build123d Python code for this parametric design tree:\n${JSON.stringify(tree, null, 2)}\n\nReturn ONLY the Python code, no markdown blocks.`,
       },
     ],
-    { model: 'anthropic/claude-sonnet-4', maxTokens: 2000, temperature: 0.3 }
+    { maxTokens: 2000, temperature: 0.3, purpose: 'code-generation' }
   )
 
-  let code = response.choices?.[0]?.message?.content || ''
-  code = code.replace(/```python\n?/g, '').replace(/```\n?/g, '').trim()
+  let code = text.replace(/```python\n?/g, '').replace(/```\n?/g, '').trim()
 
   return NextResponse.json({ code })
 }

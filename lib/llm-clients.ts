@@ -351,3 +351,241 @@ export async function nimVisionChat(
 
   return response.json()
 }
+
+// ─── OpenAI Direct ─────────────────────────────────────────────
+
+export async function openaiChat(
+  messages: Array<{ role: string; content: string }>,
+  options: {
+    model?: string
+    maxTokens?: number
+    temperature?: number
+  } = {}
+) {
+  const {
+    model = 'gpt-4o',
+    maxTokens = 2048,
+    temperature = 0.7,
+  } = options
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      max_tokens: maxTokens,
+      temperature,
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`OpenAI error ${response.status}: ${error}`)
+  }
+
+  return response.json()
+}
+
+// ─── Google Gemini ─────────────────────────────────────────────
+
+export async function geminiChat(
+  messages: Array<{ role: string; content: string }>,
+  options: {
+    model?: string
+    maxTokens?: number
+    temperature?: number
+  } = {}
+) {
+  const {
+    model = 'gemini-2.0-flash',
+    maxTokens = 2048,
+    temperature = 0.7,
+  } = options
+
+  // Convert from OpenAI message format to Gemini format
+  const systemMsg = messages.find(m => m.role === 'system')
+  const nonSystemMsgs = messages.filter(m => m.role !== 'system')
+
+  const contents = nonSystemMsgs.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }))
+
+  const body: any = {
+    contents,
+    generationConfig: {
+      maxOutputTokens: maxTokens,
+      temperature,
+    },
+  }
+
+  if (systemMsg) {
+    body.systemInstruction = { parts: [{ text: systemMsg.content }] }
+  }
+
+  const apiKey = process.env.GOOGLE_GEMINI_API_KEY
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }
+  )
+
+  if (!response.ok) {
+    const error = await response.text()
+    throw new Error(`Gemini error ${response.status}: ${error}`)
+  }
+
+  const data = await response.json()
+
+  // Normalize to OpenAI-compatible format
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  return {
+    choices: [{
+      message: { role: 'assistant', content: text },
+      finish_reason: 'stop',
+    }],
+  }
+}
+
+// ─── RESILIENT CHAT — Tries providers in order until one works ──
+
+export type Provider = 'anthropic' | 'openai' | 'gemini' | 'openrouter'
+
+const PROVIDER_ORDER: Provider[] = ['anthropic', 'openai', 'gemini', 'openrouter']
+
+// Track which providers have failed recently (avoid retrying dead ones)
+const failedProviders: Map<Provider, number> = new Map()
+const FAILURE_COOLDOWN = 60_000 // 1 minute before retrying a failed provider
+
+function isProviderAvailable(provider: Provider): boolean {
+  const failedAt = failedProviders.get(provider)
+  if (!failedAt) return true
+  if (Date.now() - failedAt > FAILURE_COOLDOWN) {
+    failedProviders.delete(provider)
+    return true
+  }
+  return false
+}
+
+function markProviderFailed(provider: Provider) {
+  failedProviders.set(provider, Date.now())
+  console.warn(`[llm] Provider ${provider} marked as failed, will retry in ${FAILURE_COOLDOWN / 1000}s`)
+}
+
+export async function resilientChat(
+  messages: Array<{ role: string; content: string }>,
+  options: {
+    maxTokens?: number
+    temperature?: number
+    preferredProvider?: Provider
+    purpose?: string // for logging
+  } = {}
+): Promise<{ text: string; provider: Provider }> {
+  const {
+    maxTokens = 2048,
+    temperature = 0.7,
+    preferredProvider,
+    purpose = 'unknown',
+  } = options
+
+  // Build provider order — preferred first, then the rest
+  const order = preferredProvider
+    ? [preferredProvider, ...PROVIDER_ORDER.filter(p => p !== preferredProvider)]
+    : [...PROVIDER_ORDER]
+
+  const errors: string[] = []
+
+  for (const provider of order) {
+    if (!isProviderAvailable(provider)) {
+      console.log(`[llm] Skipping ${provider} (recently failed)`)
+      continue
+    }
+
+    // Check if API key exists
+    if (provider === 'anthropic' && !process.env.ANTHROPIC_API_KEY) continue
+    if (provider === 'openai' && !process.env.OPENAI_API_KEY) continue
+    if (provider === 'gemini' && !process.env.GOOGLE_GEMINI_API_KEY) continue
+    if (provider === 'openrouter' && !process.env.OPENROUTER_API_KEY) continue
+
+    try {
+      console.log(`[llm] Trying ${provider} for ${purpose}...`)
+      let text = ''
+
+      switch (provider) {
+        case 'anthropic': {
+          // Use OpenRouter to route to Anthropic (avoids direct SDK dependency)
+          const result = await openRouterChat(messages, {
+            model: 'anthropic/claude-sonnet-4',
+            maxTokens,
+            temperature,
+            route: 'fallback',
+          })
+          text = result.choices?.[0]?.message?.content || ''
+          break
+        }
+        case 'openai': {
+          const result = await openaiChat(messages, {
+            model: 'gpt-4o',
+            maxTokens,
+            temperature,
+          })
+          text = result.choices?.[0]?.message?.content || ''
+          break
+        }
+        case 'gemini': {
+          const result = await geminiChat(messages, {
+            model: 'gemini-2.0-flash',
+            maxTokens,
+            temperature,
+          })
+          text = result.choices?.[0]?.message?.content || ''
+          break
+        }
+        case 'openrouter': {
+          // Use OpenRouter with non-Anthropic model as last resort
+          const result = await openRouterChat(messages, {
+            model: ['openai/gpt-4o', 'google/gemini-2.0-flash-001', 'meta-llama/llama-3.3-70b-instruct'],
+            maxTokens,
+            temperature,
+            route: 'fallback',
+          })
+          text = result.choices?.[0]?.message?.content || ''
+          break
+        }
+      }
+
+      if (text) {
+        console.log(`[llm] ✓ ${provider} succeeded for ${purpose} (${text.length} chars)`)
+        return { text, provider }
+      }
+
+      throw new Error('Empty response')
+    } catch (err: any) {
+      const errMsg = err?.message || String(err)
+      console.warn(`[llm] ✗ ${provider} failed for ${purpose}: ${errMsg.substring(0, 100)}`)
+      errors.push(`${provider}: ${errMsg.substring(0, 80)}`)
+
+      // Mark as failed if it's a credit/auth error
+      if (
+        errMsg.includes('credit balance') ||
+        errMsg.includes('insufficient') ||
+        errMsg.includes('quota') ||
+        errMsg.includes('rate_limit') ||
+        errMsg.includes('401') ||
+        errMsg.includes('403') ||
+        errMsg.includes('429')
+      ) {
+        markProviderFailed(provider)
+      }
+    }
+  }
+
+  throw new Error(`All providers failed for ${purpose}:\n${errors.join('\n')}`)
+}

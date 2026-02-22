@@ -1,4 +1,4 @@
-import { anthropic, MODELS } from '@/lib/ai-clients'
+import { resilientChat } from '@/lib/llm-clients'
 import { scoreDesign } from '@/lib/scoring'
 import type { DesignTree, EditScript, ScoreResult } from '@/lib/types'
 
@@ -86,10 +86,11 @@ export async function POST(request: Request) {
           Object.entries(tree.parameters).map(([k, v]) => [k, v.value])
         )
 
-        const plannerRes = await anthropic.messages.create({
-          model: MODELS.claude,
-          max_tokens: 800,
-          system: `You are a parametric design optimizer. Propose minimal targeted edits to improve the design score.
+        const { text: plannerText, provider: plannerProvider } = await resilientChat(
+          [
+            {
+              role: 'system',
+              content: `You are a parametric design optimizer. Propose minimal targeted edits to improve the design score.
 
 Output ONLY this JSON (no markdown, no explanation):
 {
@@ -113,7 +114,7 @@ Rules:
 - If proportion score is low, adjust height or width parameters
 - If symmetry score is low and prompt wants symmetry, add count or pattern parameters
 - If feature count is low, note it but do not add nodes (only SET_PARAM allowed)`,
-          messages: [
+            },
             {
               role: 'user',
               content: `Iteration: ${iteration}
@@ -134,12 +135,14 @@ Current parameter values: ${JSON.stringify(currentValues)}
 Propose edits to improve the overall score from ${scores.overall}:`,
             },
           ],
-        })
+          { maxTokens: 800, purpose: 'iteration-planning' }
+        )
 
-        const plannerText =
-          plannerRes.content[0]?.type === 'text'
-            ? plannerRes.content[0].text
-            : '{}'
+        emit({
+          type: 'agent_log',
+          agent: 'Claude Logic',
+          message: `Planner completed via ${plannerProvider}`,
+        })
 
         const editScript = parseJSON<EditScript>(plannerText, {
           iteration,
@@ -164,30 +167,44 @@ Propose edits to improve the overall score from ${scores.overall}:`,
           message: 'Regenerating OpenSCAD from updated parameters...',
         })
 
-        const codeRes = await anthropic.messages.create({
-          model: MODELS.claude,
-          max_tokens: 1500,
-          system: `You are an OpenSCAD code generator. Generate clean parametric OpenSCAD code.
+        let rawCode: string
+        let codeProvider: string
+        try {
+          const codeResult = await resilientChat(
+            [
+              {
+                role: 'system',
+                content: `You are a Build123d Python code generator. Generate clean parametric Build123d code.
 
 Rules:
-- Start with ALL parameters as variables at the top
-- Use ONLY: cube(), sphere(), cylinder(), union(){}, difference(){}, intersection(){}, translate(), rotate(), scale(), linear_extrude(), rotate_extrude(), for(), module
-- All dimensions must reference parameter variables
-- Output ONLY valid OpenSCAD code
-- No markdown, no backticks, no comments`,
-          messages: [
-            {
-              role: 'user',
-              content: `Generate OpenSCAD code for this updated design tree:
+1. Always use: from build123d import *
+2. Use Algebra mode (NOT builder mode)
+3. Final shape MUST be assigned to variable called "result"
+4. All dimensions should use the parametric values from the tree
+5. Do NOT include export_stl or any export calls
+6. Do NOT include viewer/show calls or if __name__ blocks
+7. Output ONLY valid Python code — no markdown, no backticks`,
+              },
+              {
+                role: 'user',
+                content: `Generate Build123d Python code for this updated design tree:
 ${JSON.stringify(updatedTree, null, 2)}`,
-            },
-          ],
-        })
+              },
+            ],
+            { maxTokens: 1500, temperature: 0.3, purpose: 'iteration-code-regen' }
+          )
+          rawCode = codeResult.text
+          codeProvider = codeResult.provider
+        } catch {
+          rawCode = 'from build123d import *\nresult = Box(10, 10, 10)'
+          codeProvider = 'fallback'
+        }
 
-        const rawCode =
-          codeRes.content[0]?.type === 'text'
-            ? codeRes.content[0].text
-            : 'cube([10, 10, 10]);'
+        emit({
+          type: 'agent_log',
+          agent: 'Claude Code',
+          message: `Code regen completed via ${codeProvider}`,
+        })
 
         const newCode = rawCode
           .replace(/```[a-z]*\n?/g, '')

@@ -1,4 +1,5 @@
-import { anthropic, nemotronClient, MODELS } from '@/lib/ai-clients'
+import { nemotronClient, MODELS } from '@/lib/ai-clients'
+import { resilientChat } from '@/lib/llm-clients'
 import { scoreDesign } from '@/lib/scoring'
 import type { DesignTree } from '@/lib/types'
 
@@ -217,10 +218,11 @@ PROMPT TO PARSE:
           message: 'Building parametric dependency tree...',
         })
 
-        const treeRes = await anthropic.messages.create({
-          model: MODELS.claude,
-          max_tokens: 2000,
-          system: `You are a parametric CAD logic tree builder. Convert design intent into a structured dependency tree. Respond with ONLY valid JSON, no markdown, no backticks, no explanation.
+        const { text: treeText, provider: treeProvider } = await resilientChat(
+          [
+            {
+              role: 'system',
+              content: `You are a parametric CAD logic tree builder. Convert design intent into a structured dependency tree. Respond with ONLY valid JSON, no markdown, no backticks, no explanation.
 
 The JSON must match this exact structure:
 {
@@ -246,7 +248,7 @@ Rules:
 - children lists node IDs that are direct children
 - all parameters need realistic min/max bounds
 - created_at must be 0 (will be set by server)`,
-          messages: [
+            },
             {
               role: 'user',
               content: `Design intent: ${JSON.stringify(intentResult)}
@@ -255,12 +257,14 @@ Original prompt: "${prompt}"
 Generate the DesignTree JSON:`,
             },
           ],
-        })
+          { maxTokens: 2000, purpose: 'tree-building' }
+        )
 
-        const treeText =
-          treeRes.content[0]?.type === 'text'
-            ? treeRes.content[0].text
-            : '{}'
+        emit({
+          type: 'agent_log',
+          agent: 'Tree Logic',
+          message: `Completed via ${treeProvider}`,
+        })
 
         const rawTree = parseJSON<DesignTree>(treeText, {
           design_id: crypto.randomUUID(),
@@ -278,7 +282,7 @@ Generate the DesignTree JSON:`,
           created_at: Date.now(),
         }
 
-        emit({ type: 'agent_done', agent: 'Tree Logic', tokens: treeText.length / 4 | 0, cost: (treeText.length / 4) * 0.000003 })
+        emit({ type: 'agent_done', agent: 'Tree Logic', tokens: treeText.length / 4 | 0, cost: 0 })
         emit({ type: 'tree', data: designTree })
         emit({
           type: 'agent_log',
@@ -294,10 +298,14 @@ Generate the DesignTree JSON:`,
           message: 'Generating Build123d code from dependency tree...',
         })
 
-        const codeRes = await anthropic.messages.create({
-          model: MODELS.claude,
-          max_tokens: 2000,
-          system: `You are an expert parametric CAD code generator using Build123d (Python). Given a parametric dependency tree, generate Build123d Python code that creates the described 3D model.
+        let rawCode: string
+        let codeProvider: string
+        try {
+          const codeResult = await resilientChat(
+            [
+              {
+                role: 'system',
+                content: `You are an expert parametric CAD code generator using Build123d (Python). Given a parametric dependency tree, generate Build123d Python code that creates the described 3D model.
 
 RULES:
 1. Always use: from build123d import *
@@ -378,23 +386,31 @@ for i in range(ribs):
     body = body + rib
 body = body - Cylinder(base_r - 3, height - 5, align=(Align.CENTER, Align.CENTER, Align.MIN))
 result = body`,
-          messages: [
-            {
-              role: 'user',
-              content: `Generate Build123d Python code for this design tree:
+              },
+              {
+                role: 'user',
+                content: `Generate Build123d Python code for this design tree:
 ${JSON.stringify(designTree, null, 2)}`,
-            },
-          ],
-        })
+              },
+            ],
+            { maxTokens: 2000, temperature: 0.3, purpose: 'code-generation' }
+          )
+          rawCode = codeResult.text
+          codeProvider = codeResult.provider
+        } catch {
+          rawCode = 'from build123d import *\nresult = Box(10, 10, 10)'
+          codeProvider = 'fallback'
+        }
 
-        const rawCode =
-          codeRes.content[0]?.type === 'text'
-            ? codeRes.content[0].text
-            : 'from build123d import *\nresult = Box(10, 10, 10)'
+        emit({
+          type: 'agent_log',
+          agent: 'Script',
+          message: `Completed via ${codeProvider}`,
+        })
 
         const build123dCode = stripMarkdown(rawCode)
 
-        emit({ type: 'agent_done', agent: 'Script', tokens: rawCode.length / 4 | 0, cost: (rawCode.length / 4) * 0.000003 })
+        emit({ type: 'agent_done', agent: 'Script', tokens: rawCode.length / 4 | 0, cost: 0 })
         emit({ type: 'code', data: build123dCode })
         emit({
           type: 'agent_log',

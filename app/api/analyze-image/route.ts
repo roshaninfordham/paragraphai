@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import Anthropic from '@anthropic-ai/sdk'
 import sharp from 'sharp'
 
 /* ── Stage 1.1: Image Preprocessing (cofounder spec) ───────────── */
@@ -224,17 +223,93 @@ async function tryNvidia(b64: string, mime: string): Promise<string | null> {
 }
 
 async function tryClaude(b64: string, mime: string): Promise<string | null> {
-  try {
-    const c = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-    const r = await c.messages.create({
-      model: 'claude-sonnet-4-5-20250929', max_tokens: 1024,
-      messages: [{ role: 'user', content: [
-        { type: 'image', source: { type: 'base64', media_type: mime as any, data: b64 } },
-        { type: 'text', text: DIR_PROMPT },
-      ]}],
-    })
-    return r.content[0]?.type === 'text' ? r.content[0].text.trim() : null
-  } catch (e: any) { console.error('[analyze-image] Claude fail:', e.message); return null }
+  // Try OpenRouter → OpenAI → Gemini for vision analysis (avoids direct Anthropic SDK)
+  const imageUrl = 'data:' + mime + ';base64,' + b64
+
+  // Strategy 1: OpenRouter (routes to Claude or other vision models)
+  if (process.env.OPENROUTER_API_KEY) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://paragraph.app',
+          'X-Title': 'ParaGraph',
+        },
+        body: JSON.stringify({
+          model: 'anthropic/claude-sonnet-4',
+          max_tokens: 1024,
+          temperature: 0.3,
+          route: 'fallback',
+          messages: [{ role: 'user', content: [
+            { type: 'image_url', image_url: { url: imageUrl } },
+            { type: 'text', text: DIR_PROMPT },
+          ]}],
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const t = data.choices?.[0]?.message?.content?.trim()
+        if (t && t.length > 20) { console.log('[analyze-image] OpenRouter vision succeeded'); return t }
+      }
+    } catch (e: any) { console.warn('[analyze-image] OpenRouter vision fail:', e.message) }
+  }
+
+  // Strategy 2: OpenAI GPT-4o vision
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          max_tokens: 1024,
+          temperature: 0.3,
+          messages: [{ role: 'user', content: [
+            { type: 'image_url', image_url: { url: imageUrl } },
+            { type: 'text', text: DIR_PROMPT },
+          ]}],
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const t = data.choices?.[0]?.message?.content?.trim()
+        if (t && t.length > 20) { console.log('[analyze-image] OpenAI vision succeeded'); return t }
+      }
+    } catch (e: any) { console.warn('[analyze-image] OpenAI vision fail:', e.message) }
+  }
+
+  // Strategy 3: Google Gemini vision
+  if (process.env.GOOGLE_GEMINI_API_KEY) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GOOGLE_GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [
+              { inlineData: { mimeType: mime, data: b64 } },
+              { text: DIR_PROMPT },
+            ]}],
+            generationConfig: { maxOutputTokens: 1024, temperature: 0.3 },
+          }),
+        }
+      )
+      if (res.ok) {
+        const data = await res.json()
+        const t = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+        if (t && t.length > 20) { console.log('[analyze-image] Gemini vision succeeded'); return t }
+      }
+    } catch (e: any) { console.warn('[analyze-image] Gemini vision fail:', e.message) }
+  }
+
+  console.error('[analyze-image] All vision fallbacks failed')
+  return null
 }
 
 /* ── Handler ───────────────────────────────────────────────────── */
